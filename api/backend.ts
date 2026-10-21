@@ -1,7 +1,7 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
 export const config = {
-  maxDuration: 60,
+  maxDuration: 70,
 };
 
 const CORS_HEADERS = {
