@@ -1,415 +1,451 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
-import { toast } from "sonner";
+import { createFileRoute } from "@tanstack/react-router";
+import { useState, useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { PageHeader } from "@/components/AppShell";
+import { DRIVERS, type DeliveryNote } from "@/lib/data";
+import { fetchLiveNotes } from "@/lib/api";
+import { crossMatch, rowsToStops, SAMPLE_STOPS, type GpsStop } from "@/lib/ituran";
+import { Card } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
-  TACHOGRAPH_1310,
-  SPREADSHEET_URL,
-  SPREADSHEET_ID,
-  TAB_TACHOGRAPH,
-  TAB_GALYA_ARCHIVE,
-  ils,
-  noteTotal,
-} from "@/lib/data";
-import { crossMatch, SAMPLE_STOPS } from "@/lib/ituran";
-import { PageHeader, StatusPill } from "@/components/AppShell";
-import {
-  Gauge,
   Satellite,
+  Clock,
+  MapPin,
   CheckCircle2,
   AlertTriangle,
-  ExternalLink,
-  Clock,
+  XCircle,
   Truck,
-  RotateCcw,
-  Sparkles,
-  Layers,
-  ArrowUpRight,
+  Upload,
+  RefreshCw,
+  Search,
+  ExternalLink,
+  SlidersHorizontal,
+  FileCheck,
+  Disc,
 } from "lucide-react";
-
-import { useLiveSheetData } from "@/lib/sheet-data";
+import { toast } from "sonner";
+import * as XLSX from "xlsx";
 
 export const Route = createFileRoute("/ituran")({
   head: () => ({
     meta: [
-      { title: "איתוראן וטכוגרף — נועה ח. סבן" },
+      { title: "איתוראן GPS וטכוגרף — נועה ח. סבן" },
       {
         name: "description",
-        content: "פענוח דיסקית טכוגרף יומית והצלבת זמני שהייה מאיתוראן מול תעודות משלוח.",
+        content: "בקרת איתוראן GPS והצלבת זמני שהייה באתר מול תעודות משלוח ודיסקיות טכוגרף.",
       },
-      { property: "og:title", content: "איתוראן וטכוגרף — ח. סבן" },
-      { property: "og:description", content: "הצלבת נתוני טלמטריה וטכוגרף ללא נייר." },
+      { property: "og:title", content: "איתוראן GPS — ח. סבן" },
+      {
+        property: "og:description",
+        content: "הצלבת מיקומי משאיות, זמני פריקה ואימות חתימות דיגיטלי.",
+      },
     ],
   }),
-  component: IturanScreen,
+  component: IturanPage,
 });
 
-function IturanScreen() {
-  const [activeTab, setActiveTab] = useState<"tachograph" | "crossmatch">("tachograph");
-  const { tachographs: liveTachs, notes: liveNotes, refresh, isLoading } = useLiveSheetData();
+function IturanPage() {
+  const [activeTab, setActiveTab] = useState<"gps" | "tachograph">("gps");
+  const [selectedPlate, setSelectedPlate] = useState<string>("all");
+  const [searchFilter, setSearchFilter] = useState<string>("");
+  const [customStops, setCustomStops] = useState<GpsStop[] | null>(null);
 
-  const currentTachs = liveTachs;
-  const currentNotes = liveNotes;
+  const {
+    data: notes = [],
+    isFetching,
+    refetch,
+  } = useQuery<DeliveryNote[]>({
+    queryKey: ["live-notes-ituran"],
+    queryFn: fetchLiveNotes,
+    staleTime: 30000,
+  });
 
-  const [tachographs, setTachographs] = useState(currentTachs);
-  const [selectedTacho, setSelectedTacho] = useState(currentTachs[0]);
+  const activeStops = customStops || SAMPLE_STOPS;
 
-  useEffect(() => {
-    setTachographs(liveTachs);
-    setSelectedTacho((prev) =>
-      prev ? liveTachs.find((t) => t.id === prev.id) || liveTachs[0] : liveTachs[0],
-    );
-  }, [liveTachs]);
+  // Cross-match notes against GPS stops
+  const matchedNotes = useMemo(() => {
+    return notes.map((note) => {
+      const driver = DRIVERS.find((d) => d.name === note.driver);
+      const plate = driver?.truck || "615-41-002";
+      const kind = (driver?.kind as "crane" | "flatbed") || "crane";
+      const result = crossMatch(note, kind, plate, activeStops);
+      return {
+        note,
+        driver,
+        plate,
+        kind,
+        ...result,
+      };
+    });
+  }, [notes, activeStops]);
 
-  const approveTacho = (id: string) => {
-    const stamp = new Date().toLocaleString("he-IL", { dateStyle: "short", timeStyle: "short" });
-    setTachographs((prev) =>
-      prev.map((t) => (t.id === id ? { ...t, ramiApproved: true, ramiApprovedAt: stamp } : t)),
-    );
-    if (selectedTacho?.id === id) {
-      setSelectedTacho((prev) =>
-        prev ? { ...prev, ramiApproved: true, ramiApprovedAt: stamp } : prev,
+  const filteredMatches = useMemo(() => {
+    return matchedNotes.filter((item) => {
+      if (selectedPlate !== "all" && !item.plate.includes(selectedPlate)) {
+        return false;
+      }
+      if (!searchFilter.trim()) return true;
+      const term = searchFilter.toLowerCase();
+      return (
+        item.note.customer.toLowerCase().includes(term) ||
+        item.note.site.toLowerCase().includes(term) ||
+        item.note.id.toLowerCase().includes(term) ||
+        (item.note.driver && item.note.driver.toLowerCase().includes(term))
       );
-    }
-    toast.success("דיסקית הטכוגרף נבדקה ואושרה ע״י ראמי מסארווה ✍️");
+    });
+  }, [matchedNotes, selectedPlate, searchFilter]);
+
+  const stats = useMemo(() => {
+    const total = matchedNotes.length;
+    const ok = matchedNotes.filter((m) => m.status === "ok").length;
+    const warn = matchedNotes.filter((m) => m.status === "warn").length;
+    const fail = matchedNotes.filter((m) => m.status === "fail").length;
+    return { total, ok, warn, fail };
+  }, [matchedNotes]);
+
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        const bstr = evt.target?.result;
+        const wb = XLSX.read(bstr, { type: "binary" });
+        const wsname = wb.SheetNames[0];
+        if (!wsname) throw new Error("גיליון ריק");
+        const ws = wb.Sheets[wsname];
+        if (!ws) throw new Error("גיליון ריק");
+        const data = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws);
+        const stops = rowsToStops(data);
+        if (stops.length > 0) {
+          setCustomStops(stops);
+          toast.success(`נטענו ${stops.length} נקודות ציון מקובץ האיתוראן בהצלחה! 🛰️`);
+        } else {
+          toast.warning("לא אותרו עמודות רכב/זמנים מוכרות בקובץ. אנא ודא כותרות מתאימות.");
+        }
+      } catch (err) {
+        toast.error("שגיאה בקריאת קובץ האקסל של איתוראן");
+      }
+    };
+    reader.readAsBinaryString(file);
   };
 
   return (
     <>
       <PageHeader
-        title="איתוראן וטכוגרף יומי"
-        subtitle="פענוח עמוד אחרון N, אימות PTO והצלבת GPS"
+        title="איתוראן GPS וטכוגרף"
+        subtitle="הצלבה אוטונומית של זמני שהייה באתר, נתוני פריקת מנוף PTO ודיסקיות טכוגרף"
         action={
-          <a
-            href={SPREADSHEET_URL}
-            target="_blank"
-            rel="noreferrer"
-            className="flex items-center gap-1.5 rounded-2xl border bg-card px-3 py-2 text-xs font-bold text-foreground transition hover:bg-muted"
-          >
-            <ExternalLink className="h-3.5 w-3.5 text-emerald-600" />
-            טאב 2 בגיליון
-          </a>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                void refetch();
+                toast.info("מרענן נתוני תעודות ואיתוראן...");
+              }}
+              disabled={isFetching}
+              className="flex items-center gap-1.5 rounded-xl border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-muted transition active:scale-95 disabled:opacity-50"
+            >
+              <RefreshCw
+                className={`h-3.5 w-3.5 text-primary ${isFetching ? "animate-spin" : ""}`}
+              />
+              <span>סנכרן</span>
+            </button>
+            <a
+              href="/tachograph.html"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center gap-1.5 rounded-xl bg-primary text-primary-foreground px-3 py-1.5 text-xs font-semibold hover:opacity-90 transition active:scale-95 shadow-sm"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span>SPARK Vision מלא</span>
+            </a>
+          </div>
         }
       />
 
-      <div className="mx-auto max-w-6xl space-y-6 px-4 py-6 md:px-8">
-        {/* Navigation Tabs */}
-        <div className="flex border-b border-border/60">
-          <button
-            onClick={() => setActiveTab("tachograph")}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-bold transition ${
-              activeTab === "tachograph"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Gauge className="h-4 w-4" /> דיסקית טכוגרף (טאב 2: {TAB_TACHOGRAPH})
-          </button>
-          <button
-            onClick={() => setActiveTab("crossmatch")}
-            className={`flex items-center gap-2 border-b-2 px-5 py-3 text-sm font-bold transition ${
-              activeTab === "crossmatch"
-                ? "border-primary text-primary"
-                : "border-transparent text-muted-foreground hover:text-foreground"
-            }`}
-          >
-            <Satellite className="h-4 w-4" /> הצלבת איתוראן מול תעודות משלוח
-          </button>
-        </div>
+      {/* Mode Navigation Tabs */}
+      <div className="flex items-center gap-2 border-b border-border pb-3 mb-6">
+        <button
+          onClick={() => setActiveTab("gps")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "gps"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-card border border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Satellite className="h-4 w-4" />
+          <span>הצלבת איתוראן GPS ותעודות</span>
+          <Badge variant="outline" className="text-xs bg-background/40 font-mono">
+            {stats.ok}/{stats.total} מאומת
+          </Badge>
+        </button>
 
-        {activeTab === "tachograph" ? (
-          /* TAB 2: TACHOGRAPH VIEWER & SHEET TABLE */
-          <div className="space-y-6">
-            {/* Top Showcase: Current Tachograph Disc */}
-            {selectedTacho && (
-              <div className="grid grid-cols-1 gap-6 lg:grid-cols-12">
-                {/* Left: Circular Disc Preview */}
-                <div className="lg:col-span-5">
-                  <div className="relative overflow-hidden rounded-3xl border bg-card p-4 shadow-card">
-                    <div className="flex items-center justify-between pb-3">
-                      <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground">
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        <span>עמוד {13} בסריקה (העמוד האחרון N)</span>
-                      </div>
-                      <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800">
-                        {selectedTacho.ituranMatch}
-                      </span>
-                    </div>
+        <button
+          onClick={() => setActiveTab("tachograph")}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-bold transition-all ${
+            activeTab === "tachograph"
+              ? "bg-primary text-primary-foreground shadow-sm"
+              : "bg-card border border-border text-muted-foreground hover:text-foreground"
+          }`}
+        >
+          <Disc className="h-4 w-4" />
+          <span>דיסקית טכוגרף 24H (SPARK Vision)</span>
+          <span className="text-[10px] px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-600 font-mono">
+            AI Core 3.5
+          </span>
+        </button>
+      </div>
 
-                    <div className="relative flex aspect-square items-center justify-center overflow-hidden rounded-2xl bg-zinc-900 p-2">
-                      <img
-                        src={selectedTacho.discUrl || TACHOGRAPH_1310}
-                        alt="דיסקית טכוגרף"
-                        className="h-full w-full rounded-full object-cover shadow-2xl transition hover:scale-105"
-                      />
-                      {/* Rami Stamp overlay if approved */}
-                      {selectedTacho.ramiApproved && (
-                        <div className="stamp absolute bottom-6 left-6 bg-card/85 text-xs text-rami shadow-lg">
-                          ח. סבן — נבדק ואושר ע״י ראמי מסארווה ✍️
-                          <br />
-                          {selectedTacho.ramiApprovedAt ?? "14/10/2026, 17:45"}
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Right: Key Metrics & Approval */}
-                <div className="flex flex-col justify-between space-y-4 lg:col-span-7">
-                  <div className="rounded-3xl border bg-card p-6 shadow-card space-y-5">
-                    <div className="flex flex-wrap items-center justify-between gap-2 border-b pb-4">
-                      <div>
-                        <div className="text-xs font-bold text-muted-foreground">
-                          דיסקית יומית לתאריך
-                        </div>
-                        <h2 className="font-display text-2xl font-bold">{selectedTacho.date}</h2>
-                      </div>
-                      <div className="flex items-center gap-2 rounded-2xl bg-muted/50 px-3 py-1.5 text-sm font-semibold">
-                        <Truck className="h-4 w-4 text-primary" />
-                        <span>
-                          {selectedTacho.driverName} · משאית {selectedTacho.truckId}
-                        </span>
-                      </div>
-                    </div>
-
-                    {/* KPI Grid */}
-                    <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                      <div className="rounded-2xl bg-muted/40 p-3">
-                        <div className="text-xs text-muted-foreground">מד אוץ התחלה</div>
-                        <div className="font-display text-lg font-bold">
-                          {selectedTacho.kmStart.toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-muted/40 p-3">
-                        <div className="text-xs text-muted-foreground">מד אוץ סיום</div>
-                        <div className="font-display text-lg font-bold">
-                          {selectedTacho.kmEnd.toLocaleString()}
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-primary/10 p-3">
-                        <div className="text-xs font-semibold text-primary">סה״כ ק״מ יומי</div>
-                        <div className="font-display text-xl font-extrabold text-primary">
-                          {selectedTacho.kmTotal} ק״מ
-                        </div>
-                      </div>
-                      <div className="rounded-2xl bg-amber-500/10 p-3">
-                        <div className="text-xs font-semibold text-amber-800">שעות מנוף PTO</div>
-                        <div className="font-display text-xl font-extrabold text-amber-800">
-                          {selectedTacho.ptoHours} שעות
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Due Diligence Findings */}
-                    <div className="space-y-2 rounded-2xl border bg-muted/20 p-4 text-xs">
-                      <div className="font-bold text-foreground">
-                        ממצאי בדיקה אוטונומית (נועה AI):
-                      </div>
-                      <div className="flex items-center gap-2 text-emerald-700">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>קילומטראז' תואם בדיוק של 99.4% למסלול איתוראן שנרשם במערכת.</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-emerald-700">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>
-                          זמני עבודת מנוף ב-PTO: 02:20 שעות רציפות תואמות 4 הנפות באתרים שונים.
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-2 text-muted-foreground">
-                        <CheckCircle2 className="h-4 w-4 shrink-0" />
-                        <span>חריגות מהירות או זמן סרק חריג: 0 (נסיעה תקינה לחלוטין).</span>
-                      </div>
-                    </div>
-
-                    {/* Action Bar */}
-                    <div className="pt-2">
-                      {!selectedTacho.ramiApproved ? (
-                        <button
-                          onClick={() => approveTacho(selectedTacho.id)}
-                          className="flex w-full items-center justify-center gap-2 rounded-2xl bg-rami py-3.5 font-bold text-rami-foreground shadow-md transition hover:opacity-90"
-                        >
-                          אישור ראמי על הטכוגרף ✍️
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-between rounded-2xl bg-emerald-50 px-4 py-3 text-xs font-bold text-emerald-800 border border-emerald-200">
-                          <span>✅ הטכוגרף נבדק ונחתם ע״י ראמי מסארווה</span>
-                          <span>{selectedTacho.ramiApprovedAt}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
+      {activeTab === "gps" ? (
+        <div className="space-y-6">
+          {/* Top Metric Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            <Card className="p-4 border border-border/80 bg-card shadow-sm">
+              <div className="flex items-center justify-between text-xs text-muted-foreground font-medium">
+                <span>סה״כ תעודות להצלבה</span>
+                <FileCheck className="h-4 w-4 text-primary" />
               </div>
-            )}
-
-            {/* Bottom: Tab 2 Sheet Table */}
-            <div className="overflow-hidden rounded-2xl border bg-card shadow-card">
-              <div className="flex items-center justify-between border-b bg-muted/40 p-4">
-                <div className="flex items-center gap-2 font-display text-sm font-bold">
-                  <Gauge className="h-4 w-4 text-amber-600" />
-                  <span>טבלת גיליון: {TAB_TACHOGRAPH} (ריכוז דיסקיות יומיות)</span>
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  עמודות A עד K בגיליון בדיקת תעודות משלוח
-                </span>
+              <div className="text-2xl font-black mt-2 font-mono text-foreground">
+                {stats.total}
               </div>
+              <div className="text-[11px] text-muted-foreground mt-1">מערך משאיות פעיל היום</div>
+            </Card>
 
-              <div className="overflow-x-auto text-xs">
-                <table className="w-full text-right border-collapse">
-                  <thead>
-                    <tr className="border-b bg-muted/20 text-muted-foreground">
-                      <th className="p-3 whitespace-nowrap">A: תאריך</th>
-                      <th className="p-3 whitespace-nowrap">B: נהג ומשאית</th>
-                      <th className="p-3 whitespace-nowrap">C: שם קובץ מקור</th>
-                      <th className="p-3 whitespace-nowrap">D: מד אוץ התחלה</th>
-                      <th className="p-3 whitespace-nowrap">E: מד אוץ סיום</th>
-                      <th className="p-3 whitespace-nowrap">F: סה״כ ק״מ</th>
-                      <th className="p-3 whitespace-nowrap">G: זמן מנוף PTO</th>
-                      <th className="p-3 whitespace-nowrap">H: חריגות מהירות</th>
-                      <th className="p-3 whitespace-nowrap">I: דיסקית ב-Drive</th>
-                      <th className="p-3 whitespace-nowrap">J: אימות איתוראן</th>
-                      <th className="p-3 whitespace-nowrap">K: אישור ראמי</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y">
-                    {tachographs.map((t) => (
-                      <tr
-                        key={t.id}
-                        onClick={() => setSelectedTacho(t)}
-                        className={`cursor-pointer transition hover:bg-muted/40 ${
-                          selectedTacho?.id === t.id ? "bg-muted/30 font-semibold" : ""
-                        }`}
-                      >
-                        <td className="p-3 whitespace-nowrap font-medium">{t.date}</td>
-                        <td className="p-3 whitespace-nowrap">
-                          {t.driverName} ({t.truckId})
-                        </td>
-                        <td className="p-3 whitespace-nowrap font-mono text-[11px] text-muted-foreground">
-                          {t.originalFileName}
-                        </td>
-                        <td className="p-3 whitespace-nowrap">{t.kmStart.toLocaleString()}</td>
-                        <td className="p-3 whitespace-nowrap">{t.kmEnd.toLocaleString()}</td>
-                        <td className="p-3 whitespace-nowrap font-bold text-primary">
-                          {t.kmTotal} ק״מ
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-amber-800">{t.ptoHours}</td>
-                        <td className="p-3 whitespace-nowrap">0 (תקין)</td>
-                        <td className="p-3 whitespace-nowrap text-primary">🔘 צפה בדיסקית</td>
-                        <td className="p-3 whitespace-nowrap text-emerald-700">{t.ituranMatch}</td>
-                        <td className="p-3 whitespace-nowrap">
-                          {t.ramiApproved ? (
-                            <span className="font-bold text-rami">נבדק ואושר ✍️</span>
-                          ) : (
-                            <span className="text-muted-foreground">ממתין לחותמת</span>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
+            <Card className="p-4 border border-emerald-500/20 bg-emerald-500/5 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-emerald-700 font-medium">
+                <span>אומתו ב-100% באיתוראן</span>
+                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
               </div>
-            </div>
+              <div className="text-2xl font-black mt-2 font-mono text-emerald-600">{stats.ok}</div>
+              <div className="text-[11px] text-emerald-600/80 mt-1">חתימה בטווח כניסה ויציאה</div>
+            </Card>
+
+            <Card className="p-4 border border-amber-500/20 bg-amber-500/5 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-amber-700 font-medium">
+                <span>סטיית שהייה חריגה</span>
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+              </div>
+              <div className="text-2xl font-black mt-2 font-mono text-amber-600">{stats.warn}</div>
+              <div className="text-[11px] text-amber-600/80 mt-1">
+                חריגה מכללי פריקה (מנוף/פלטה)
+              </div>
+            </Card>
+
+            <Card className="p-4 border border-destructive/20 bg-destructive/5 shadow-sm">
+              <div className="flex items-center justify-between text-xs text-destructive font-medium">
+                <span>ללא דיווח מיקום</span>
+                <XCircle className="h-4 w-4 text-destructive" />
+              </div>
+              <div className="text-2xl font-black mt-2 font-mono text-destructive">
+                {stats.fail}
+              </div>
+              <div className="text-[11px] text-destructive/80 mt-1">הרכב לא אותר בכתובת האתר</div>
+            </Card>
           </div>
-        ) : (
-          /* TAB 2: TELEMETRY CROSS MATCH ENGINE */
-          <div className="space-y-4">
-            <div className="rounded-2xl border bg-card p-5 shadow-card">
-              <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
-                <div>
-                  <h3 className="font-display text-lg font-bold">
-                    הצלבת טלמטריה יומית (איתוראן מול קומקס)
-                  </h3>
-                  <p className="text-xs text-muted-foreground">
-                    קובץ Excel (.xlsx) מאיתוראן מוצלב אוטומטית מול שעות החתימה ומשך השהייה הנדרש.
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-800">
-                    חוקי שהייה: מנוף 25–45 דק׳ | פלטה 15–25 דק׳
-                  </span>
-                </div>
-              </div>
-            </div>
 
-            {currentNotes.length === 0 ? (
-              <div className="rounded-3xl border bg-card p-12 text-center shadow-card">
-                <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-primary/10 text-primary mb-3">
-                  <Satellite className="h-7 w-7" />
+          {/* Controls Bar: Search & Plate Filters & Upload */}
+          <Card className="p-4 border border-border bg-card shadow-sm">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-2 flex-1">
+                <div className="relative flex-1 max-w-sm">
+                  <Search className="absolute right-3 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    value={searchFilter}
+                    onChange={(e) => setSearchFilter(e.target.value)}
+                    placeholder="חיפוש לפי לקוח, כתובת אתר או נהג..."
+                    className="pr-9 h-9 text-xs"
+                  />
                 </div>
-                <h3 className="text-lg font-bold text-foreground">
-                  אין תעודות משלוח בגיליון להצלבה כרגע
-                </h3>
-                <p className="mt-1 text-xs text-muted-foreground max-w-md mx-auto">
-                  המערכת מוצלבת מול טאב {TAB_GALYA_ARCHIVE}. תעודות שנסרקות ע״י גליה יופיעו כאן
-                  אוטומטית.
-                </p>
-                <div className="mt-5 flex justify-center">
+
+                <div className="flex items-center gap-1.5 overflow-x-auto">
                   <button
-                    onClick={() =>
-                      refresh()
-                        .then(() => toast.success("הנתונים סונכרנו מגיליון סבן 🟢"))
-                        .catch(() => toast.error("שגיאה בסנכרון"))
-                    }
-                    disabled={isLoading}
-                    className="flex items-center gap-1.5 rounded-2xl bg-primary px-4 py-2 text-xs font-bold text-primary-foreground shadow transition hover:opacity-95"
+                    onClick={() => setSelectedPlate("all")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition ${
+                      selectedPlate === "all"
+                        ? "bg-secondary text-secondary-foreground font-bold"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
                   >
-                    <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? "animate-spin" : ""}`} />
-                    <span>{isLoading ? "מסנכרן..." : "רענן מגיליון"}</span>
+                    כל הרכבים
+                  </button>
+                  <button
+                    onClick={() => setSelectedPlate("615-41-002")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                      selectedPlate === "615-41-002"
+                        ? "bg-secondary text-secondary-foreground font-bold"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Truck className="h-3 w-3" />
+                    <span>615-41-002 (חכמת מנוף)</span>
+                  </button>
+                  <button
+                    onClick={() => setSelectedPlate("651-51-701")}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition flex items-center gap-1 ${
+                      selectedPlate === "651-51-701"
+                        ? "bg-secondary text-secondary-foreground font-bold"
+                        : "text-muted-foreground hover:bg-muted"
+                    }`}
+                  >
+                    <Truck className="h-3 w-3" />
+                    <span>651-51-701 (עלי פלטה)</span>
                   </button>
                 </div>
               </div>
-            ) : (
-              <div className="space-y-3">
-                {currentNotes.map((n) => {
-                  const driver = n.driverId === "hikmat" ? "crane" : "flatbed";
-                  const match = crossMatch(
-                    { site: n.site, signedAt: n.signedAt },
-                    driver,
-                    n.driverId === "hikmat" ? "615-41-002" : "651-51-701",
-                    SAMPLE_STOPS,
-                  );
-                  return (
-                    <div
-                      key={n.id}
-                      className="flex flex-col gap-4 rounded-2xl bg-card p-4 shadow-card sm:flex-row sm:items-center sm:justify-between"
-                    >
-                      <div className="space-y-1">
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          <span className="font-bold text-foreground">ת.מ. {n.id}</span>
-                          <span>·</span>
-                          <span>{n.customer}</span>
-                          <span>·</span>
-                          <span>{n.site}</span>
-                        </div>
-                        <div className="flex items-center gap-3 text-xs">
-                          <span className="font-bold text-primary">{ils(noteTotal(n))}</span>
-                          <span>
-                            שעת חתימה באתר: <b>{n.signedAt}</b>
-                          </span>
-                          <span>
-                            זמני איתוראן: {n.gps.arrive} ➔ {n.gps.depart}
-                          </span>
-                        </div>
-                        <div className="text-xs text-muted-foreground">{n.gps.note}</div>
-                      </div>
 
-                      <div className="flex items-center gap-3">
-                        <StatusPill s={n.gps.status} />
-                        <Link
-                          to="/notes/$id"
-                          params={{ id: n.id }}
-                          className="inline-flex items-center gap-1 text-xs font-bold text-primary hover:underline"
-                        >
-                          <Layers className="h-3.5 w-3.5" /> מעבר לתעודה
-                        </Link>
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl border border-dashed border-border hover:border-primary text-xs font-semibold text-muted-foreground hover:text-foreground cursor-pointer transition">
+                  <Upload className="h-3.5 w-3.5 text-primary" />
+                  <span>ייבוא דוח איתוראן (Excel)</span>
+                  <input
+                    type="file"
+                    accept=".xlsx,.xls,.csv"
+                    className="hidden"
+                    onChange={handleFileUpload}
+                  />
+                </label>
+                {customStops && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 text-xs text-muted-foreground"
+                    onClick={() => {
+                      setCustomStops(null);
+                      toast.info("חזרת לנתוני איתוראן לדוגמה");
+                    }}
+                  >
+                    איפוס
+                  </Button>
+                )}
               </div>
-            )}
+            </div>
+          </Card>
+
+          {/* Matched Notes List */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {filteredMatches.map((item) => (
+              <Card
+                key={item.note.id}
+                className={`p-4 border transition-all shadow-sm ${
+                  item.status === "ok"
+                    ? "border-emerald-500/30 hover:border-emerald-500/60"
+                    : item.status === "warn"
+                      ? "border-amber-500/30 hover:border-amber-500/60"
+                      : "border-destructive/30 hover:border-destructive/60"
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        ת.מ. {item.note.id}
+                      </span>
+                      <Badge
+                        variant="outline"
+                        className={`text-xs ${
+                          item.status === "ok"
+                            ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 font-medium"
+                            : item.status === "warn"
+                              ? "bg-amber-500/10 text-amber-700 border-amber-500/30 font-medium"
+                              : "bg-destructive/10 text-destructive border-destructive/30 font-medium"
+                        }`}
+                      >
+                        {item.label}
+                      </Badge>
+                    </div>
+                    <div className="font-bold text-foreground text-sm mt-1">
+                      {item.note.customer}
+                    </div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
+                      <MapPin className="h-3 w-3 text-muted-foreground" />
+                      <span>{item.note.site}</span>
+                    </div>
+                  </div>
+
+                  <div className="text-left font-mono text-xs">
+                    <div className="font-bold text-foreground flex items-center justify-end gap-1">
+                      <Truck className="h-3 w-3 text-muted-foreground" />
+                      <span>{item.plate}</span>
+                    </div>
+                    <div className="text-muted-foreground text-[11px] mt-0.5">
+                      נהג: {item.note.driver || "לא שויך"}
+                    </div>
+                    <Badge variant="secondary" className="text-[10px] mt-1 font-sans">
+                      {item.kind === "crane" ? "משאית מנוף" : "משאית פלטה"}
+                    </Badge>
+                  </div>
+                </div>
+
+                {/* GPS Telemetry Breakdown */}
+                <div className="mt-3 pt-3 border-t border-border/80 grid grid-cols-3 gap-2 text-center text-xs">
+                  <div className="bg-muted/40 rounded-lg p-2">
+                    <div className="text-[10px] text-muted-foreground">שעת חתימה</div>
+                    <div className="font-mono font-bold text-foreground mt-0.5">
+                      {item.note.signedAt || "08:15"}
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/40 rounded-lg p-2">
+                    <div className="text-[10px] text-muted-foreground">שהייה בפועל</div>
+                    <div className="font-mono font-bold text-foreground mt-0.5">
+                      {item.dwell !== null ? `${item.dwell} דק׳` : "—"}
+                    </div>
+                  </div>
+
+                  <div className="bg-muted/40 rounded-lg p-2">
+                    <div className="text-[10px] text-muted-foreground">חלון איתוראן</div>
+                    <div className="font-mono font-bold text-foreground mt-0.5">
+                      {item.stop ? `${item.stop.arrive} - ${item.stop.depart}` : "לא אותר"}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Match Details & Evidence */}
+                {item.stop && (
+                  <div className="mt-2.5 text-[11px] text-muted-foreground bg-secondary/30 rounded-lg px-2.5 py-1.5 flex items-center justify-between">
+                    <span className="truncate">כתובת באיתוראן: {item.stop.address}</span>
+                    <span className="font-semibold text-emerald-600 flex-shrink-0">מיקום אומת</span>
+                  </div>
+                )}
+              </Card>
+            ))}
           </div>
-        )}
-      </div>
+        </div>
+      ) : (
+        /* Tachograph SPARK Vision Viewport */
+        <div className="space-y-4">
+          <Card className="p-3 border border-border bg-card flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-bold text-foreground">
+                noaBrain SPARK Vision — מנתח דיסקיות טכוגרף מעגליות בזמן אמת
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <a
+                href="/tachograph.html"
+                target="_blank"
+                rel="noreferrer"
+                className="text-xs font-semibold text-primary hover:underline flex items-center gap-1"
+              >
+                <span>פתח בחלון מלא</span>
+                <ExternalLink className="h-3 w-3" />
+              </a>
+            </div>
+          </Card>
+
+          <div className="w-full rounded-2xl overflow-hidden border border-border shadow-lg bg-gray-950">
+            <iframe
+              src="/tachograph.html"
+              title="noaBrain SPARK Vision"
+              className="w-full h-[880px] border-0"
+            />
+          </div>
+        </div>
+      )}
     </>
   );
 }
