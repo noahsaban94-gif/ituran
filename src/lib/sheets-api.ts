@@ -68,6 +68,8 @@ export async function fetchWithBackoff(
   throw lastError || new Error("שגיאת רשת לאחר 3 ניסיונות");
 }
 
+import { EMBEDDED_BACKUP_CSV } from "./fallback-csv";
+
 export async function getLocalAttachedNotes(): Promise<DeliveryNoteRow[]> {
   try {
     const filePath = path.resolve(
@@ -79,8 +81,13 @@ export async function getLocalAttachedNotes(): Promise<DeliveryNoteRow[]> {
       return parseDeliveryNotesFromCSV(csvContent);
     }
   } catch (err) {
-    console.warn("Could not read local attached CSV:", err);
+    console.warn("Could not read local attached CSV from filesystem, using embedded archive:", err);
   }
+
+  if (EMBEDDED_BACKUP_CSV) {
+    return parseDeliveryNotesFromCSV(EMBEDDED_BACKUP_CSV);
+  }
+
   return [];
 }
 
