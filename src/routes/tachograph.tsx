@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useLogisticsData } from "@/hooks/use-logistics-data";
-import { TachographViewer } from "@/components/TachographViewer";
+import { TachographCanvasViewer } from "@/components/TachographCanvasViewer";
 import { PageHeader } from "@/components/AppShell";
 import { DriverId, DRIVERS } from "@/lib/types";
 import { Disc, Calendar, RefreshCw } from "lucide-react";
@@ -18,7 +18,7 @@ export const Route = createFileRoute("/tachograph")({
       { title: "Tachograph · איתוראן GPS — ח. סבן לוגיסטיקה" },
       {
         name: "description",
-        content: "ניתוח דיסקיות טכוגרף, הצלבת איתוראן GPS ותעודות משלוח בכתב יד.",
+        content: "ניתוח דיסקיות טכוגרף בקנבס אינטראקטיבי, טבעת 24H והצלבת זמני מנוף ו-PTO.",
       },
     ],
   }),
@@ -27,7 +27,7 @@ export const Route = createFileRoute("/tachograph")({
 
 function TachographScreen() {
   const search = Route.useSearch();
-  const { visits, discs, anomalies, isLoading, isRefetching, refetch, saveDisc } =
+  const { visits, sites, discs, anomalies, isLoading, isRefetching, refetch, saveDisc } =
     useLogisticsData();
 
   // Find all available dates
@@ -60,10 +60,10 @@ function TachographScreen() {
             <button
               onClick={refetch}
               disabled={isRefetching}
-              className="flex items-center gap-1.5 rounded-2xl border bg-card px-3.5 py-2 text-xs font-bold text-foreground transition hover:bg-muted disabled:opacity-50 shadow-xs"
+              className="flex items-center gap-1.5 rounded-2xl border border-[#223246] bg-[#131c26] px-3.5 py-2 text-xs font-bold text-slate-200 transition hover:bg-[#1f2d3d] disabled:opacity-50 shadow-md"
             >
               <RefreshCw
-                className={`h-3.5 w-3.5 text-primary ${isRefetching ? "animate-spin" : ""}`}
+                className={`h-3.5 w-3.5 text-[#10b981] ${isRefetching ? "animate-spin" : ""}`}
               />
               <span>{isRefetching ? "מסנכרן..." : "רענן מגיליון"}</span>
             </button>
@@ -73,17 +73,17 @@ function TachographScreen() {
 
       <div className="mx-auto max-w-7xl px-4 py-6 space-y-6 sm:px-8" dir="rtl">
         {/* Date & Driver Filter Bar */}
-        <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border bg-card p-4 shadow-card">
+        <div className="flex flex-wrap items-center justify-between gap-4 rounded-3xl border border-[#223246] bg-[#131c26] p-4 shadow-xl">
           <div className="flex flex-wrap items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-foreground">
-              <Calendar className="h-4 w-4 text-primary" />
-              <span>בחר תאריך:</span>
+            <div className="flex items-center gap-1.5 text-xs font-bold text-slate-200">
+              <Calendar className="h-4 w-4 text-[#10b981]" />
+              <span>בחר תאריך יום עבודה:</span>
             </div>
 
             <select
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className="rounded-2xl border bg-card py-2 px-3 text-xs font-bold text-foreground shadow-xs focus:ring-2 focus:ring-primary/40 focus:outline-none"
+              className="rounded-2xl border border-[#223246] bg-[#0b1118] py-2 px-3 text-xs font-bold text-white shadow-xs focus:ring-2 focus:ring-[#10b981]/50 focus:outline-none"
             >
               {availableDates.map((d) => (
                 <option key={d} value={d}>
@@ -94,23 +94,23 @@ function TachographScreen() {
           </div>
 
           {/* Driver Switcher */}
-          <div className="flex items-center rounded-2xl border bg-muted/40 p-1">
+          <div className="flex items-center rounded-2xl border border-[#223246] bg-[#0b1118] p-1">
             <button
               onClick={() => setSelectedDriver("hikmat")}
-              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition ${
                 selectedDriver === "hikmat"
-                  ? "bg-primary text-primary-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-[#10b981] text-slate-950 font-black shadow-md"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               חכמת גאבר (615-41-002)
             </button>
             <button
               onClick={() => setSelectedDriver("ali")}
-              className={`flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-xs font-bold transition ${
+              className={`flex items-center gap-1.5 rounded-xl px-4 py-2 text-xs font-bold transition ${
                 selectedDriver === "ali"
-                  ? "bg-cyan-700 text-white shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                  ? "bg-[#38bdf8] text-slate-950 font-black shadow-md"
+                  : "text-slate-400 hover:text-white"
               }`}
             >
               עלי אבו עידה (651-51-701)
@@ -118,12 +118,14 @@ function TachographScreen() {
           </div>
         </div>
 
-        {/* Tachograph Viewer Component */}
-        <TachographViewer
+        {/* Tachograph HTML5 Canvas & 24H Ring Viewer Component */}
+        <TachographCanvasViewer
           disc={dayDisc}
           visits={dayVisits}
+          sites={sites}
           anomalies={dayAnomalies}
           date={selectedDate}
+          driverId={selectedDriver}
           onSaveCorrection={(row, fix) => saveDisc(row, fix)}
         />
       </div>

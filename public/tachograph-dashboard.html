@@ -1,0 +1,1054 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tachograph &amp; GPS 24H Dashboard — ח. סבן חומרי בניין</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;500;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-primary: #0b1118;
+      --bg-card: #131c26;
+      --bg-card-sub: #0d151e;
+      --border-color: #223246;
+      --brand-green: #10b981;
+      --brand-sky: #38bdf8;
+      --brand-indigo: #818cf8;
+      --brand-amber: #f59e0b;
+      --brand-red: #ef4444;
+      --text-main: #f8fafc;
+      --text-muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background-color: var(--bg-primary);
+      color: var(--text-main);
+      font-family: 'Heebo', -apple-system, BlinkMacSystemFont, sans-serif;
+      line-height: 1.5;
+      padding: 1.5rem;
+      direction: rtl;
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    /* Header Bar */
+    .header-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      padding: 1.25rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 1rem;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.4);
+    }
+
+    .header-info {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .header-icon {
+      width: 48px;
+      height: 48px;
+      border-radius: 1rem;
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--brand-green);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .header-title {
+      font-size: 1.25rem;
+      font-weight: 800;
+      color: #fff;
+    }
+
+    .header-subtitle {
+      font-size: 0.8125rem;
+      color: var(--text-muted);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.35rem;
+      padding: 0.25rem 0.75rem;
+      border-radius: 9999px;
+      font-size: 0.75rem;
+      font-weight: 700;
+    }
+
+    .badge-green {
+      background: rgba(16, 185, 129, 0.15);
+      color: var(--brand-green);
+      border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-amber {
+      background: rgba(245, 158, 11, 0.15);
+      color: var(--brand-amber);
+      border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.6rem 1.25rem;
+      border-radius: 1rem;
+      font-size: 0.8125rem;
+      font-weight: 700;
+      cursor: pointer;
+      border: 1px solid var(--border-color);
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+
+    .btn-primary {
+      background: var(--brand-green);
+      color: #020617;
+      border-color: var(--brand-green);
+    }
+
+    .btn-primary:hover {
+      background: #0ea5e9;
+      border-color: #0ea5e9;
+    }
+
+    .btn-sub {
+      background: #172230;
+      color: var(--text-main);
+    }
+
+    .btn-sub:hover {
+      background: var(--border-color);
+    }
+
+    /* Main 2-Column Grid */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 1.2fr 1fr;
+      gap: 1.5rem;
+    }
+
+    @media (max-width: 1024px) {
+      .dashboard-grid {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    /* Card Panels */
+    .panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1.5rem;
+      overflow: hidden;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .panel-header {
+      padding: 1rem 1.25rem;
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-card-sub);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .panel-header h3 {
+      font-size: 0.95rem;
+      font-weight: 800;
+      color: #fff;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+
+    .panel-body {
+      padding: 1.25rem;
+    }
+
+    /* Canvas Viewer Specifics */
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .tool-btn {
+      background: #172230;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 0.35rem 0.65rem;
+      border-radius: 0.6rem;
+      font-size: 0.75rem;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.25rem;
+    }
+
+    .tool-btn:hover {
+      background: var(--border-color);
+    }
+
+    .tool-btn.active {
+      background: var(--brand-green);
+      color: #020617;
+      font-weight: 800;
+    }
+
+    .canvas-container {
+      position: relative;
+      height: 480px;
+      background: #070b10;
+      cursor: grab;
+      user-select: none;
+      overflow: hidden;
+    }
+
+    .canvas-container:active {
+      cursor: grabbing;
+    }
+
+    #tachographCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+
+    .canvas-hint {
+      position: absolute;
+      bottom: 0.75rem;
+      right: 0.75rem;
+      background: rgba(13, 21, 30, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.3rem 0.75rem;
+      border-radius: 0.75rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+    }
+
+    .rotation-control {
+      position: absolute;
+      bottom: 0.75rem;
+      left: 0.75rem;
+      background: rgba(13, 21, 30, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      padding: 0.35rem 0.75rem;
+      border-radius: 0.75rem;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 0.75rem;
+      backdrop-filter: blur(4px);
+    }
+
+    .rotation-control input[type="range"] {
+      width: 90px;
+      accent-color: var(--brand-green);
+      cursor: pointer;
+    }
+
+    .canvas-footer {
+      padding: 0.75rem 1.25rem;
+      background: var(--bg-card-sub);
+      border-top: 1px solid var(--border-color);
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      font-family: monospace;
+    }
+
+    /* 24H SVG Ring Panel */
+    .ring-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      padding: 1rem 0;
+    }
+
+    .ring-legend {
+      display: flex;
+      gap: 1rem;
+      font-size: 0.75rem;
+      margin-top: 0.5rem;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+      color: var(--text-muted);
+    }
+
+    .legend-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+    }
+
+    /* KPI Cards */
+    .kpi-row {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .kpi-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 0.85rem 1rem;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .kpi-title {
+      font-size: 0.6875rem;
+      color: var(--text-muted);
+      font-weight: 700;
+    }
+
+    .kpi-value {
+      font-size: 1.25rem;
+      font-weight: 900;
+      color: #fff;
+      font-family: monospace;
+      margin-top: 0.2rem;
+    }
+
+    /* Timeline & Stops */
+    .timeline-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .timeline-item {
+      background: var(--bg-card-sub);
+      border: 1px solid var(--border-color);
+      border-radius: 1rem;
+      padding: 0.85rem 1rem;
+      transition: all 0.2s ease;
+      cursor: pointer;
+    }
+
+    .timeline-item:hover, .timeline-item.active {
+      border-color: var(--brand-green);
+      background: #142230;
+      box-shadow: 0 4px 15px rgba(16, 185, 129, 0.15);
+    }
+
+    .item-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.5rem;
+    }
+
+    .item-stop-num {
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: var(--brand-green);
+      color: #020617;
+      font-size: 0.75rem;
+      font-weight: 900;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-left: 0.5rem;
+    }
+
+    .item-address {
+      font-size: 0.875rem;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .item-customer {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.5rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      font-size: 0.75rem;
+    }
+
+    .metrics-sub {
+      color: var(--text-muted);
+      font-size: 0.6875rem;
+      display: block;
+    }
+
+    .metrics-val {
+      font-weight: 700;
+      font-family: monospace;
+    }
+
+    .deviation-bar {
+      grid-column: span 2;
+      border-top: 1px solid var(--border-color);
+      padding-top: 0.4rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    /* Insights Box */
+    .insight-card {
+      background: rgba(16, 185, 129, 0.08);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+      border-radius: 1rem;
+      padding: 0.85rem 1rem;
+      margin-bottom: 0.6rem;
+      font-size: 0.75rem;
+    }
+
+    .insight-warning {
+      background: rgba(245, 158, 11, 0.08);
+      border-color: rgba(245, 158, 11, 0.3);
+    }
+
+    .insight-header {
+      display: flex;
+      justify-content: space-between;
+      font-weight: 800;
+      margin-bottom: 0.25rem;
+    }
+
+    /* Forms */
+    .form-group {
+      display: flex;
+      gap: 0.5rem;
+      margin-top: 0.75rem;
+    }
+
+    .input-field {
+      background: #070b10;
+      border: 1px solid var(--border-color);
+      border-radius: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      color: #fff;
+      font-family: inherit;
+      font-size: 0.8125rem;
+      flex: 1;
+    }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <!-- Top Navigation / Context Header -->
+  <div class="header-card">
+    <div class="header-info">
+      <div class="header-icon">⏱️</div>
+      <div>
+        <div class="header-title">סידור חכם &amp; בקרת טכוגרף — ח. סבן חומרי בניין (1994) בע״מ</div>
+        <div class="header-subtitle">
+          הצלבת דיסקית טכוגרף מקורית מול איתוראן GPS וחיישן PTO · גיליון: <code>1FsLseQrKbIj_AvlE6-dW4J12Gr88P3uaoFVBjEcUjsw</code>
+        </div>
+      </div>
+    </div>
+    <div style="display: flex; gap: 0.5rem; align-items: center;">
+      <span class="badge badge-green" id="driverBadge">חכמת גאבר (615-41-002)</span>
+      <button class="btn btn-primary" id="approveRamiBtn">אשר דיסקית כראמי מסארווה ✍️</button>
+    </div>
+  </div>
+
+  <!-- KPI Row -->
+  <div class="kpi-row">
+    <div class="kpi-card">
+      <div class="kpi-title">סה״כ ק״מ דיסקית</div>
+      <div class="kpi-value" id="kpiKm">140 <span style="font-size: 0.75rem; color: var(--text-muted);">ק״מ</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">שעות נסיעה (איתוראן)</div>
+      <div class="kpi-value" style="color: var(--brand-sky);" id="kpiDrive">03:15 <span style="font-size: 0.75rem; color: var(--text-muted);">שעות</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">שעות שהייה באתרים</div>
+      <div class="kpi-value" style="color: var(--brand-indigo);" id="kpiWork">04:30 <span style="font-size: 0.75rem; color: var(--text-muted);">שעות</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">זמן סרק כולל</div>
+      <div class="kpi-value" style="color: var(--brand-amber);" id="kpiIdle">00:45 <span style="font-size: 0.75rem; color: var(--text-muted);">שעות</span></div>
+    </div>
+    <div class="kpi-card">
+      <div class="kpi-title">סך דקות מנוף PTO</div>
+      <div class="kpi-value" style="color: var(--brand-green);" id="kpiPto">135 <span style="font-size: 0.75rem; color: var(--text-muted);">דק׳</span></div>
+    </div>
+  </div>
+
+  <!-- Main 2-Column Section -->
+  <div class="dashboard-grid">
+    <!-- RIGHT COLUMN: Canvas Viewer & 24H Activity Ring -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <!-- HTML5 Canvas Interactive Viewer Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>
+            <span>🔍</span>
+            <span>רכיב HTML5 Canvas: סריקת דיסקית טכוגרף</span>
+          </h3>
+          <div class="toolbar">
+            <button class="tool-btn" id="zoomInBtn" title="הגדל זום (+)">🔍+</button>
+            <button class="tool-btn" id="zoomOutBtn" title="הקטן זום (-)">🔍-</button>
+            <button class="tool-btn" id="rotCwBtn" title="סובב 90°">🔄 90°</button>
+            <button class="tool-btn" id="rotCcwBtn" title="סובב 90° שמאלה">↩️ 90°</button>
+            <button class="tool-btn" id="invertBtn" title="נגטיב / היפוך צבעים">נגטיב</button>
+            <button class="tool-btn" id="contrastBtn" title="הגברת ניגודיות">ניגודיות</button>
+            <button class="tool-btn active" id="clockOverlayBtn" title="שעון 24H">שעון 24H</button>
+            <button class="tool-btn" id="resetBtn" title="איפוס">איפוס</button>
+          </div>
+        </div>
+
+        <div class="canvas-container" id="canvasContainer">
+          <canvas id="tachographCanvas"></canvas>
+          <div class="canvas-hint">🖱️ גרור להזזה · גלגלת עכבר לזום · סיבוב 360°</div>
+          <div class="rotation-control">
+            <span>זווית:</span>
+            <input type="range" id="rotSlider" min="0" max="359" value="0">
+            <span id="rotLabel" style="font-family: monospace; font-weight: 700; color: var(--brand-green);">0°</span>
+          </div>
+        </div>
+
+        <div class="canvas-footer">
+          <div>ק״מ פתיחה: <strong style="color: #fff;">342,100</strong> | סגירה: <strong style="color: #fff;">342,240</strong></div>
+          <div>מקור: <span id="imageSource">סריקה מ-Drive / גיבוי סבן מאומת</span></div>
+        </div>
+      </div>
+
+      <!-- 24-Hour SVG Activity Ring -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>
+            <span>⭕</span>
+            <span>טבעת פעילות 24H והצלבת זמני מנוף</span>
+          </h3>
+          <div class="ring-legend">
+            <div class="legend-item"><span class="legend-dot" style="background: var(--brand-sky);"></span> נסיעה</div>
+            <div class="legend-item"><span class="legend-dot" style="background: var(--brand-indigo);"></span> שהות באתר</div>
+            <div class="legend-item"><span class="legend-dot" style="background: var(--brand-amber);"></span> פריקת מנוף PTO</div>
+          </div>
+        </div>
+        <div class="panel-body ring-wrapper">
+          <svg id="activityRingSvg" viewBox="0 0 300 300" style="width: 260px; height: 260px;"></svg>
+          <div id="ringTooltip" style="font-size: 0.75rem; text-align: center; margin-top: 0.5rem; color: var(--text-muted);">
+            העבר עכבר מעל מקטעי הטבעת לפירוט זמני איתוראן ומנוף
+          </div>
+        </div>
+      </div>
+
+      <!-- Rami Correction & Approval Form -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>
+            <span>✍️</span>
+            <span>טופס תיקון ואישור ראמי מסארווה</span>
+          </h3>
+          <span class="badge badge-green" id="approvalStatus">אושר ע״י ראמי מסארווה</span>
+        </div>
+        <div class="panel-body" style="display: flex; flex-direction: column; gap: 0.75rem;">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem;">
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">תיקון תאריך (שגיאת OCR)</label>
+              <input type="text" class="input-field" id="fixDateInput" value="18/10/2026">
+            </div>
+            <div>
+              <label style="font-size: 0.75rem; color: var(--text-muted); display: block; margin-bottom: 0.25rem;">תיקון רישוי משאית</label>
+              <input type="text" class="input-field" id="fixPlateInput" value="615-41-002">
+            </div>
+          </div>
+          <button class="btn btn-sub" id="saveCorrectionBtn" style="width: 100%;">שמור תיקונים בגיליון</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LEFT COLUMN: Timeline, Stops, Site Median & Efficiency Insights -->
+    <div style="display: flex; flex-direction: column; gap: 1.5rem;">
+      <!-- Efficiency Recommendations Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>
+            <span>💡</span>
+            <span>פאנל המלצות ייעול מבוסס נתונים</span>
+          </h3>
+          <span class="badge badge-green">תובנות אוטומטיות</span>
+        </div>
+        <div class="panel-body">
+          <div class="insight-card insight-warning">
+            <div class="insight-header">
+              <span style="color: var(--brand-amber);">⚠️ שהייה ממושכת ללא הפעלת PTO</span>
+              <span>רעננה, אחוזה 45</span>
+            </div>
+            <div>שהייה של 52 דק׳ אך מנוף פעל 12 דק׳ בלבד. פער של 40 דק׳ המתנה לפריקת משטח. מומלץ לבדוק נגישות צוות באתר.</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-header">
+              <span style="color: var(--brand-sky);">🛣️ אתר נפרק בשעות שיא הפקקים</span>
+              <span>הרצליה פיתוח</span>
+            </div>
+            <div>הגעה בשעה 08:15 לאחר 42 דק׳ נסיעה. קידום תחנה זו לשעה 07:00 יחסוך כ-20 דק׳ נסיעה יומית.</div>
+          </div>
+          <div class="insight-card">
+            <div class="insight-header">
+              <span style="color: var(--brand-green);">✅ התאמת חתימות לקוח</span>
+              <span>100% תעודות חתומות</span>
+            </div>
+            <div>כל 5 התעודות ביום זה כוללות חתימת מקבל דיגיטלית מאומתת ללא חוסרים.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chronological Timeline with Historical Site Median -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3>
+            <span>📍</span>
+            <span>ציר זמנים כרונולוגי והצלבת כתובות</span>
+          </h3>
+          <span class="badge badge-green">5 תחנות ביום</span>
+        </div>
+        <div class="panel-body">
+          <div class="timeline-list" id="timelineList">
+            <!-- Timeline stops injected via JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+// Mock Real Sheet Visits Data from Spreadsheet 1FsLseQrKbIj_AvlE6-dW4J12Gr88P3uaoFVBjEcUjsw
+const VISITS_DATA = [
+  {
+    stop: 1,
+    address: "בעלי מלאכה 22, תל אביב",
+    customer: "רובי בראשי",
+    noteId: "6715831",
+    ituranArrival: "06:45",
+    ituranDeparture: "07:25",
+    siteDuration: 40,
+    medianSite: 20,
+    ptoStart: "06:50",
+    ptoEnd: "07:20",
+    ptoMinutes: 30,
+    handwrittenMinutes: 30,
+    kmFromPrev: 12,
+    driveMinutes: 20,
+    hasSignature: true
+  },
+  {
+    stop: 2,
+    address: "ז׳בוטינסקי 102, רמת גן",
+    customer: "ש.י.נ.א בנייה",
+    noteId: "6715832",
+    ituranArrival: "07:45",
+    ituranDeparture: "08:15",
+    siteDuration: 30,
+    medianSite: 22,
+    ptoStart: "07:50",
+    ptoEnd: "08:10",
+    ptoMinutes: 20,
+    handwrittenMinutes: 25,
+    kmFromPrev: 8,
+    driveMinutes: 20,
+    hasSignature: true
+  },
+  {
+    stop: 3,
+    address: "אחוזה 45, רעננה",
+    customer: "אגם קורן פרויקטים",
+    noteId: "6715833",
+    ituranArrival: "08:50",
+    ituranDeparture: "09:42",
+    siteDuration: 52,
+    medianSite: 25,
+    ptoStart: "09:10",
+    ptoEnd: "09:22",
+    ptoMinutes: 12,
+    handwrittenMinutes: 15,
+    kmFromPrev: 18,
+    driveMinutes: 35,
+    hasSignature: true
+  },
+  {
+    stop: 4,
+    address: "החושלים 8, הרצליה פיתוח",
+    customer: "מגדלי מרינה",
+    noteId: "6715834",
+    ituranArrival: "10:15",
+    ituranDeparture: "11:00",
+    siteDuration: 45,
+    medianSite: 28,
+    ptoStart: "10:20",
+    ptoEnd: "10:55",
+    ptoMinutes: 35,
+    handwrittenMinutes: 35,
+    kmFromPrev: 14,
+    driveMinutes: 33,
+    hasSignature: true
+  },
+  {
+    stop: 5,
+    address: "דרך בן גוריון 18, גבעתיים",
+    customer: "מנרב הנדסה",
+    noteId: "6715835",
+    ituranArrival: "11:40",
+    ituranDeparture: "12:18",
+    siteDuration: 38,
+    medianSite: 20,
+    ptoStart: "11:45",
+    ptoEnd: "12:15",
+    ptoMinutes: 30,
+    handwrittenMinutes: 30,
+    kmFromPrev: 16,
+    driveMinutes: 40,
+    hasSignature: true
+  }
+];
+
+// --- HTML5 Canvas Interactive Viewer ---
+const canvas = document.getElementById("tachographCanvas");
+const ctx = canvas.getContext("2d");
+const container = document.getElementById("canvasContainer");
+
+let zoom = 1;
+let pan = { x: 0, y: 0 };
+let rotation = 0;
+let isInverted = false;
+let contrast = 120;
+let showClock = true;
+let isDragging = false;
+let dragStart = { x: 0, y: 0 };
+
+const discImage = new Image();
+discImage.crossOrigin = "anonymous";
+// Sample high-contrast disc image pattern fallback
+discImage.src = "/__l5e/assets-v1/2a523071-4f46-4cfe-a91d-b8dcb22c62e4/galya-1310-p13.jpg";
+
+function resizeCanvas() {
+  const dpr = window.devicePixelRatio || 1;
+  const rect = container.getBoundingClientRect();
+  canvas.width = rect.width * dpr;
+  canvas.height = rect.height * dpr;
+  ctx.scale(dpr, dpr);
+  renderCanvas();
+}
+
+window.addEventListener("resize", resizeCanvas);
+discImage.onload = () => {
+  resizeCanvas();
+};
+
+function renderCanvas() {
+  const rect = container.getBoundingClientRect();
+  const width = rect.width;
+  const height = rect.height;
+  const cx = width / 2;
+  const cy = height / 2;
+
+  ctx.clearRect(0, 0, width, height);
+
+  // Background
+  ctx.fillStyle = "#070b10";
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.filter = `${isInverted ? 'invert(100%) ' : ''}contrast(${contrast}%) brightness(105%)`;
+  ctx.translate(cx + pan.x, cy + pan.y);
+  ctx.rotate((rotation * Math.PI) / 180);
+  ctx.scale(zoom, zoom);
+
+  const dim = Math.min(width, height) * 0.85;
+  if (discImage.complete && discImage.naturalWidth > 0) {
+    ctx.drawImage(discImage, -dim / 2, -dim / 2, dim, dim);
+  } else {
+    // Canvas generated high-detail tachograph wax disc
+    ctx.beginPath();
+    ctx.arc(0, 0, dim / 2, 0, Math.PI * 2);
+    ctx.fillStyle = "#f1ece1";
+    ctx.fill();
+    ctx.strokeStyle = "#8b7355";
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Concentric needle tracks
+    for (let r = dim * 0.2; r < dim * 0.45; r += 18) {
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.strokeStyle = "rgba(139, 115, 85, 0.4)";
+      ctx.stroke();
+    }
+  }
+  ctx.restore();
+
+  // Draw 24-Hour Circular Overlay
+  if (showClock) {
+    ctx.save();
+    ctx.translate(cx + pan.x, cy + pan.y);
+    ctx.scale(zoom, zoom);
+
+    const radius = Math.min(width, height) * 0.44;
+    ctx.strokeStyle = "rgba(16, 185, 129, 0.5)";
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.font = "bold 11px Heebo, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+
+    for (let h = 0; h < 24; h++) {
+      const angle = (h / 24 * 360 - 90) * (Math.PI / 180);
+      const x1 = Math.cos(angle) * (radius - 8);
+      const y1 = Math.sin(angle) * (radius - 8);
+      const x2 = Math.cos(angle) * radius;
+      const y2 = Math.sin(angle) * radius;
+
+      ctx.strokeStyle = "rgba(56, 189, 248, 0.8)";
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+
+      const lx = Math.cos(angle) * (radius + 14);
+      const ly = Math.sin(angle) * (radius + 14);
+      ctx.fillStyle = h % 6 === 0 ? "#10b981" : "#94a3b8";
+      ctx.fillText(h.toString().padStart(2, "0"), lx, ly);
+    }
+    ctx.restore();
+  }
+}
+
+// Canvas Drag & Pan
+canvas.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  dragStart = { x: e.clientX - pan.x, y: e.clientY - pan.y };
+});
+window.addEventListener("mousemove", (e) => {
+  if (!isDragging) return;
+  pan.x = e.clientX - dragStart.x;
+  pan.y = e.clientY - dragStart.y;
+  renderCanvas();
+});
+window.addEventListener("mouseup", () => isDragging = false);
+
+// Canvas Wheel Zoom
+canvas.addEventListener("wheel", (e) => {
+  e.preventDefault();
+  const factor = e.deltaY < 0 ? 1.15 : 0.88;
+  zoom = Math.min(Math.max(zoom * factor, 0.4), 6);
+  renderCanvas();
+});
+
+// Canvas Controls
+document.getElementById("zoomInBtn").onclick = () => { zoom = Math.min(zoom + 0.25, 5); renderCanvas(); };
+document.getElementById("zoomOutBtn").onclick = () => { zoom = Math.max(zoom - 0.25, 0.4); renderCanvas(); };
+document.getElementById("rotCwBtn").onclick = () => { rotation = (rotation + 90) % 360; updateRotUI(); renderCanvas(); };
+document.getElementById("rotCcwBtn").onclick = () => { rotation = (rotation - 90 + 360) % 360; updateRotUI(); renderCanvas(); };
+document.getElementById("invertBtn").onclick = function() {
+  isInverted = !isInverted;
+  this.classList.toggle("active", isInverted);
+  renderCanvas();
+};
+document.getElementById("contrastBtn").onclick = function() {
+  contrast = contrast === 120 ? 180 : contrast === 180 ? 240 : 120;
+  renderCanvas();
+};
+document.getElementById("clockOverlayBtn").onclick = function() {
+  showClock = !showClock;
+  this.classList.toggle("active", showClock);
+  renderCanvas();
+};
+document.getElementById("resetBtn").onclick = () => {
+  zoom = 1; pan = { x: 0, y: 0 }; rotation = 0; updateRotUI(); renderCanvas();
+};
+document.getElementById("rotSlider").oninput = function() {
+  rotation = parseInt(this.value, 10);
+  document.getElementById("rotLabel").innerText = rotation + "°";
+  renderCanvas();
+};
+function updateRotUI() {
+  document.getElementById("rotSlider").value = rotation;
+  document.getElementById("rotLabel").innerText = rotation + "°";
+}
+
+// --- 24H Activity Ring SVG Generation ---
+function timeToFrac(t) {
+  const [h, m] = t.split(":").map(Number);
+  return (h * 60 + m) / 1440;
+}
+function fracToCoord(f, r) {
+  const rad = (f * 360 - 90) * (Math.PI / 180);
+  return { x: 150 + r * Math.cos(rad), y: 150 + r * Math.sin(rad) };
+}
+function arcPath(sF, eF, inR, outR) {
+  let diff = eF - sF;
+  if (diff < 0) diff += 1;
+  const large = diff > 0.5 ? 1 : 0;
+  const p1 = fracToCoord(sF, outR);
+  const p2 = fracToCoord(sF + diff, outR);
+  const p3 = fracToCoord(sF + diff, inR);
+  const p4 = fracToCoord(sF, inR);
+  return `M ${p1.x} ${p1.y} A ${outR} ${outR} 0 ${large} 1 ${p2.x} ${p2.y} L ${p3.x} ${p3.y} A ${inR} ${inR} 0 ${large} 0 ${p4.x} ${p4.y} Z`;
+}
+
+function render24HRing() {
+  const svg = document.getElementById("activityRingSvg");
+  svg.innerHTML = `
+    <circle cx="150" cy="150" r="138" fill="none" stroke="#1e293b" stroke-width="1"/>
+    <circle cx="150" cy="150" r="118" fill="none" stroke="#1e293b" stroke-width="1"/>
+    <circle cx="150" cy="150" r="98" fill="none" stroke="#1e293b" stroke-width="1"/>
+    <circle cx="150" cy="150" r="78" fill="#0b1118" stroke="#1e293b" stroke-width="1"/>
+    <text x="150" y="146" fill="#10b981" font-size="12" font-weight="bold" text-anchor="middle">ח. סבן 24H</text>
+    <text x="150" y="162" fill="#94a3b8" font-size="9" text-anchor="middle">איתוראן + PTO</text>
+  `;
+
+  // Draw 24H tick lines
+  for (let h = 0; h < 24; h += 3) {
+    const f = h / 24;
+    const c1 = fracToCoord(f, 76);
+    const c2 = fracToCoord(f, 140);
+    svg.innerHTML += `<line x1="${c1.x}" y1="${c1.y}" x2="${c2.x}" y2="${c2.y}" stroke="#334155" stroke-dasharray="2,2"/>`;
+  }
+
+  // Draw segments
+  VISITS_DATA.forEach((v, i) => {
+    const arrF = timeToFrac(v.ituranArrival);
+    const depF = timeToFrac(v.ituranDeparture);
+
+    // Travel segment
+    if (i > 0) {
+      const prevDepF = timeToFrac(VISITS_DATA[i - 1].ituranDeparture);
+      const travelD = arcPath(prevDepF, arrF, 120, 138);
+      svg.innerHTML += `<path d="${travelD}" fill="#38bdf8" opacity="0.9" class="ring-arc" data-tip="נסיעה: ${VISITS_DATA[i-1].ituranDeparture} עד ${v.ituranArrival} (${v.kmFromPrev} ק״מ)"/>`;
+    }
+
+    // Site Stay
+    const siteD = arcPath(arrF, depF, 100, 118);
+    svg.innerHTML += `<path d="${siteD}" fill="#818cf8" opacity="0.9" class="ring-arc" data-tip="שהות באתר: ${v.ituranArrival}-${v.ituranDeparture} · ${v.address}"/>`;
+
+    // Crane PTO
+    const ptoSF = timeToFrac(v.ptoStart);
+    const ptoEF = timeToFrac(v.ptoEnd);
+    const ptoD = arcPath(ptoSF, ptoEF, 80, 98);
+    svg.innerHTML += `<path d="${ptoD}" fill="#f59e0b" opacity="0.95" class="ring-arc" data-tip="פריקת מנוף PTO: ${v.ptoStart}-${v.ptoEnd} (${v.ptoMinutes} דק׳)"/>`;
+  });
+
+  // Attach tooltips
+  svg.querySelectorAll(".ring-arc").forEach(arc => {
+    arc.addEventListener("mouseenter", (e) => {
+      document.getElementById("ringTooltip").innerText = e.target.getAttribute("data-tip");
+      document.getElementById("ringTooltip").style.color = "#10b981";
+    });
+    arc.addEventListener("mouseleave", () => {
+      document.getElementById("ringTooltip").innerText = "העבר עכבר מעל מקטעי הטבעת לפירוט זמני איתוראן ומנוף";
+      document.getElementById("ringTooltip").style.color = "var(--text-muted)";
+    });
+  });
+}
+
+// --- Render Timeline & Historical Site Median Comparison ---
+function renderTimeline() {
+  const container = document.getElementById("timelineList");
+  container.innerHTML = "";
+
+  VISITS_DATA.forEach(v => {
+    const deviation = v.siteDuration - v.medianSite;
+    const devBadge = deviation > 15
+      ? `<span class="badge" style="background: rgba(239, 68, 68, 0.2); color: var(--brand-red);">+${deviation} דק׳ חריגה</span>`
+      : deviation > 0
+        ? `<span class="badge badge-amber">+${deviation} דק׳</span>`
+        : `<span class="badge badge-green">תואם חציון</span>`;
+
+    const el = document.createElement("div");
+    el.className = "timeline-item";
+    el.innerHTML = `
+      <div class="item-header">
+        <div style="display: flex; align-items: center;">
+          <div class="item-stop-num">${v.stop}</div>
+          <div>
+            <div class="item-address">${v.address}</div>
+            <div class="item-customer">${v.customer} · תעודה: <strong style="color: #fff;">${v.noteId}</strong></div>
+          </div>
+        </div>
+        <span class="badge ${v.hasSignature ? 'badge-green' : 'badge-amber'}">${v.hasSignature ? 'חתימה קיימת ✅' : 'ללא חתימה ⚠️'}</span>
+      </div>
+      <div class="metrics-grid">
+        <div>
+          <span class="metrics-sub">איתוראן הגעה ➔ יציאה:</span>
+          <span class="metrics-val">${v.ituranArrival} - ${v.ituranDeparture} (${v.siteDuration} דק׳)</span>
+        </div>
+        <div>
+          <span class="metrics-sub">זמן מנוף PTO בפועל:</span>
+          <span class="metrics-val" style="color: var(--brand-amber);">${v.ptoMinutes} דק׳ (כתב יד: ${v.handwrittenMinutes} דק׳)</span>
+        </div>
+        <div class="deviation-bar">
+          <span style="color: var(--text-muted);">השוואה מול חציון אתר (${v.medianSite} דק׳):</span>
+          ${devBadge}
+        </div>
+      </div>
+    `;
+    container.appendChild(el);
+  });
+}
+
+// Button actions
+document.getElementById("approveRamiBtn").onclick = () => {
+  alert("הדיסקית אושרה בהצלחה ע״י ראמי מסארווה ונחתמה אלקטרונית בגיליון!");
+};
+document.getElementById("saveCorrectionBtn").onclick = () => {
+  const dateVal = document.getElementById("fixDateInput").value;
+  const plateVal = document.getElementById("fixPlateInput").value;
+  alert(`התיקונים נשמרו בגיליון:\nתאריך: ${dateVal}\nרישוי: ${plateVal}`);
+};
+
+// Initial calls
+render24HRing();
+renderTimeline();
+setTimeout(resizeCanvas, 100);
+</script>
+</body>
+</html>
