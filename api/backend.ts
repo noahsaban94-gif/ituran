@@ -27,7 +27,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   const APPS_SCRIPT_URL =
     process.env.GAS_URL ||
     "https://script.google.com/macros/s/AKfycbxVFYZsqxGmZsez91TUoii1LM8PALQmtuZebmPU2RK2Ki3ZuZADLGF_8u4OQ5rr4dSigQ/exec";
-  const API_TOKEN = process.env.API_TOKEN || "openssl _1a084c2a6b9ed55a";
+  const API_TOKEN = process.env.API_TOKEN || "saban_secure_token_2026";
 
   try {
     // 2. פעולת אימות ובריאות
