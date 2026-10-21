@@ -25,7 +25,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   // כתובת ה-Apps Script והטוקן ממשתני הסביבה (עם ערכי ברירת מחדל)
   const APPS_SCRIPT_URL =
-    process.env.APPS_SCRIPT_URL ||
+    process.env.GAS_URL ||
     "https://script.google.com/macros/s/AKfycbxVFYZsqxGmZsez91TUoii1LM8PALQmtuZebmPU2RK2Ki3ZuZADLGF_8u4OQ5rr4dSigQ/exec";
   const API_TOKEN = process.env.API_TOKEN || "openssl _1a084c2a6b9ed55a";
 
