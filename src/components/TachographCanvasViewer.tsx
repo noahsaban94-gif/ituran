@@ -27,7 +27,7 @@ import {
   TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
-import p13 from "@/assets/scans/p13.jpg.asset.json";
+import { DEFAULT_TACHOGRAPH_DISC_DATA_URL } from "@/assets/default-disc";
 import { extractDriveFileId } from "@/lib/scan-proxy-handler";
 
 interface TachographCanvasViewerProps {
@@ -167,7 +167,7 @@ export function TachographCanvasViewer({
     ) {
       return rawLink;
     }
-    return p13.url;
+    return DEFAULT_TACHOGRAPH_DISC_DATA_URL;
   }, [disc]);
 
   // Load Image into Canvas
@@ -191,10 +191,10 @@ export function TachographCanvasViewer({
     };
 
     img.onerror = () => {
-      // Fallback to local high-res asset
-      if (img.src !== p13.url) {
+      // Fallback to embedded high-res vector asset
+      if (img.src !== DEFAULT_TACHOGRAPH_DISC_DATA_URL) {
         console.warn("Drive scan image unavailable, falling back to verified disc asset");
-        img.src = p13.url;
+        img.src = DEFAULT_TACHOGRAPH_DISC_DATA_URL;
         setImageSourceDesc("דיסקית ארכיון מאומתת (גיבוי סבן)");
       } else {
         setImageError(true);

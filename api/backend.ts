@@ -40,11 +40,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const pingRes = await fetch(pingUrl.toString(), { redirect: "follow" });
         const pingJson = await pingRes.json();
         return res.status(200).json({ ok: true, healthy: true, serverData: pingJson });
-      } catch (err: any) {
+      } catch (err: unknown) {
+        const message = err instanceof Error ? err.message : String(err);
         return res.status(200).json({
           ok: true,
           healthy: false,
-          error: "כשל בפנייה ל-Apps Script: " + err.message,
+          error: "כשל בפנייה ל-Apps Script: " + message,
         });
       }
     }
@@ -103,7 +104,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const responseTimeMs = Date.now() - startTime;
 
     // בדיקה האם השרת של גוגל החזיר JSON ולא דף התחברות של Google (HTML)
-    if (contentType.includes("application/json") || (rawText.startsWith("{") && rawText.endsWith("}"))) {
+    if (
+      contentType.includes("application/json") ||
+      (rawText.startsWith("{") && rawText.endsWith("}"))
+    ) {
       try {
         const parsed = JSON.parse(rawText);
         if (parsed.ok && parsed.data) {
@@ -166,9 +170,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         },
       },
     });
-
-  } catch (err: any) {
+  } catch (err: unknown) {
     // מניעת קריסת Serverless - תמיד מחזירים 200 עם תיאור התקלה
+    const message = err instanceof Error ? err.message : String(err);
     return res.status(200).json({
       ok: true,
       data: {
@@ -182,7 +186,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         diagnosis: {
           ok: false,
           isUsingFallback: true,
-          error: "שגיאת שרת: " + (err.message || String(err)),
+          error: "שגיאת שרת: " + message,
           causes: ["בדוק את יומן הריצה (Function Logs) ב-Vercel Dashboard."],
         },
       },

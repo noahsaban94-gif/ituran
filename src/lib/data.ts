@@ -57,14 +57,14 @@ export type DeliveryNote = {
   };
 };
 
-import p13 from "@/assets/scans/p13.jpg.asset.json";
+import { DEFAULT_TACHOGRAPH_DISC_SVG_URL } from "@/assets/default-disc";
 
 export const SPREADSHEET_ID = "1FsLseQrKbIj_AvlE6-dW4J12Gr88P3uaoFVBjEcUjsw";
 export const SPREADSHEET_URL = `https://docs.google.com/spreadsheets/d/${SPREADSHEET_ID}/edit`;
 export const TAB_GALYA_ARCHIVE = "ארכיון_תעודות_גליה";
 export const TAB_TACHOGRAPH = "ארכיון_טכוגרף";
 
-export const TACHOGRAPH_1310 = p13.url;
+export const TACHOGRAPH_1310 = DEFAULT_TACHOGRAPH_DISC_SVG_URL;
 
 export type TachographRecord = {
   id: string;

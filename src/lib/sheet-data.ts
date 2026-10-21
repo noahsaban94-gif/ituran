@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from "react";
 import { SPREADSHEET_ID, TAB_GALYA_ARCHIVE, TAB_TACHOGRAPH } from "./data";
 import type { DeliveryNote, Order, TachographRecord, Yard, AuditStatus } from "./data";
 import { extractDriveFileId } from "./scan-proxy-handler";
-import p13 from "@/assets/scans/p13.jpg.asset.json";
+import { DEFAULT_TACHOGRAPH_DISC_SVG_URL } from "@/assets/default-disc";
 
 export interface SheetSyncState {
   notes: DeliveryNote[];
@@ -383,7 +383,7 @@ export async function fetchLiveTachographs(): Promise<TachographRecord[]> {
         kmTotal: 140,
         ptoHours: "02:30",
         idleWarnings: 0,
-        discUrl: p13.url,
+        discUrl: DEFAULT_TACHOGRAPH_DISC_SVG_URL,
         ituranMatch: statusText,
         ramiApproved: true,
         ramiApprovedAt: `${date}, 17:30`,

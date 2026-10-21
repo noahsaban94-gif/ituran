@@ -24,7 +24,7 @@ import {
   Calendar,
 } from "lucide-react";
 import { toast } from "sonner";
-import p13 from "@/assets/scans/p13.jpg.asset.json";
+import { DEFAULT_TACHOGRAPH_DISC_DATA_URL } from "@/assets/default-disc";
 
 interface TachographViewerProps {
   disc?: TachographDiscRow;
@@ -108,7 +108,7 @@ export function TachographViewer({
 
   const discImageSrc = disc?.["קישור לדיסקית"]?.startsWith("http")
     ? disc["קישור לדיסקית"]
-    : p13.url;
+    : DEFAULT_TACHOGRAPH_DISC_DATA_URL;
 
   // Save disc approval
   const handleApproveDisc = async () => {
