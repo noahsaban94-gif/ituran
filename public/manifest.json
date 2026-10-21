@@ -1,0 +1,13 @@
+{
+  "name": "נועה — ח. סבן לוגיסטיקה",
+  "short_name": "נועה סבן",
+  "start_url": "/",
+  "display": "standalone",
+  "dir": "rtl",
+  "lang": "he",
+  "background_color": "#f7f5ef",
+  "theme_color": "#1f3a33",
+  "icons": [
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

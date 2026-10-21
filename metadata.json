@@ -1,0 +1,5 @@
+{
+  "name": "נועה — ח. סבן לוגיסטיקה",
+  "description": "מערכת בקרת תעודות משלוח ללא נייר של ח. סבן חומרי בניין (1994) בע״מ.",
+  "capabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
