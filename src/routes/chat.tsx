@@ -3,7 +3,17 @@ import { useState, useRef } from "react";
 import { PageHeader } from "@/components/AppShell";
 import noa from "@/assets/noa.jpg";
 import { useLiveSheetData } from "@/lib/sheet-data";
-import { Send, CheckCheck, Truck, FileText, Gauge, ZoomIn, ZoomOut, RotateCw, Sun } from "lucide-react";
+import {
+  Send,
+  CheckCheck,
+  Truck,
+  FileText,
+  Gauge,
+  ZoomIn,
+  ZoomOut,
+  RotateCw,
+  Sun,
+} from "lucide-react";
 
 export const Route = createFileRoute("/chat")({
   head: () => ({
@@ -14,7 +24,10 @@ export const Route = createFileRoute("/chat")({
         content: "צ׳אט לוגיסטי חכם עם נועה, סדרנית ויד ימינו של ראמי מסארווה.",
       },
       { property: "og:title", content: "נועה AI — סדרנית ח. סבן" },
-      { property: "og:description", content: "בירור סטטוס הזמנות, תעודות משלוח וניתוח טכוגרף בוואטסאפ." },
+      {
+        property: "og:description",
+        content: "בירור סטטוס הזמנות, תעודות משלוח וניתוח טכוגרף בוואטסאפ.",
+      },
     ],
   }),
   component: ChatScreen,
@@ -38,7 +51,7 @@ type Message = {
 function ChatScreen() {
   const [input, setInput] = useState("");
   const { notes: liveNotes, orders: liveOrders, tachographs: liveTachs } = useLiveSheetData();
-  
+
   // Canvas interactive state for disc viewer inside chat
   const [zoom, setZoom] = useState(1);
   const [rotation, setRotation] = useState(0);
@@ -91,7 +104,9 @@ function ChatScreen() {
             date: tacho.date,
             kmTotal: tacho.kmTotal,
             ptoHours: tacho.ptoHours,
-            imageUrl: tacho.discLink || "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600",
+            imageUrl:
+              tacho.discLink ||
+              "https://images.unsplash.com/photo-1581092160607-ee22621dd758?w=600",
           };
         } else {
           reply = `🚚 **דוח טכוגרף:**\nכרגע אין דיסקיות טכוגרף פעילות בטאב "ארכיון_טכוגרף" בגיליון. ברגע שגליה תסרוק את העמוד האחרון, הנתונים יופיעו כאן מיידית.`;
@@ -106,7 +121,12 @@ function ChatScreen() {
         } else {
           reply = `📦 **סטטוס הזמנות חיות:**\nאין הזמנות פתוחות כרגע בגיליון.`;
         }
-      } else if (t.includes("תעוד") || t.includes("אישור") || t.includes("הראל") || t.includes("ראמי")) {
+      } else if (
+        t.includes("תעוד") ||
+        t.includes("אישור") ||
+        t.includes("הראל") ||
+        t.includes("ראמי")
+      ) {
         if (liveNotes.length > 0) {
           reply = `📄 **תמונת תעודות משלוח מגיליון סבן:**\nנקלטו **${liveNotes.length} תעודות משלוח** חי מגיליון וחתומות כנדרש!`;
         } else {
@@ -157,7 +177,9 @@ function ChatScreen() {
               />
               <div>
                 <div className="font-bold text-sm">נועה ❤️</div>
-                <div className="text-[11px] opacity-80">סדרנית ויד ימינו של ראמי — מחוברת ל-Apps Script</div>
+                <div className="text-[11px] opacity-80">
+                  סדרנית ויד ימינו של ראמי — מחוברת ל-Apps Script
+                </div>
               </div>
             </div>
           </div>
@@ -182,8 +204,12 @@ function ChatScreen() {
                   {m.tachographData && (
                     <div className="mt-3 rounded-2xl border bg-muted/50 p-3 space-y-3">
                       <div className="flex items-center justify-between text-xs font-bold text-primary">
-                        <span>🔍 קנבס דיסקית: {m.tachographData.driver} ({m.tachographData.truck})</span>
-                        <span className="rounded bg-primary/10 px-2 py-0.5">{m.tachographData.date}</span>
+                        <span>
+                          🔍 קנבס דיסקית: {m.tachographData.driver} ({m.tachographData.truck})
+                        </span>
+                        <span className="rounded bg-primary/10 px-2 py-0.5">
+                          {m.tachographData.date}
+                        </span>
                       </div>
 
                       {/* Interactive Canvas Toolbar */}

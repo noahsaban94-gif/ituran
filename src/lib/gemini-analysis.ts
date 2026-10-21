@@ -82,7 +82,10 @@ export async function analyzeTachographDiscVision(
     });
 
     const text = response.text || "{}";
-    const clean = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+    const clean = text
+      .replace(/^```(?:json)?\s*/i, "")
+      .replace(/```\s*$/i, "")
+      .trim();
     return JSON.parse(clean);
   } catch (err) {
     console.error("Gemini Vision analysis error:", err);
@@ -131,8 +134,15 @@ export async function analyzeDayWithGemini(input: AnalyzeDiscInput): Promise<Gem
   if (!apiKey) {
     const defaultResult: GeminiAnalysisResult = {
       title: `דוח סיכום יומי: ${input.driverName} (${input.date})`,
-      summary: `ביום זה בוצעו ${input.visits.length} ביקורים ב-${input.visits .map((v) => v.city) .filter((c, i, a) => a.indexOf(c) === i) .join(", ")}. זמן עבודת מנוף שנמדד עומד על ${input.ptoHours} שעות. זוהו ${input.anomalies.length} חריגות המחייבות בקרה.${
-        visionData ? ` פוענחו נתוני דיסקית חזותיים (ק"מ משוער: ${visionData.totalKm ?? "לא ידוע"}).` : ""
+      summary: `ביום זה בוצעו ${input.visits.length} ביקורים ב-${input.visits
+        .map((v) => v.city)
+        .filter((c, i, a) => a.indexOf(c) === i)
+        .join(
+          ", ",
+        )}. זמן עבודת מנוף שנמדד עומד על ${input.ptoHours} שעות. זוהו ${input.anomalies.length} חריגות המחייבות בקרה.${
+        visionData
+          ? ` פוענחו נתוני דיסקית חזותיים (ק"מ משוער: ${visionData.totalKm ?? "לא ידוע"}).`
+          : ""
       }`,
       priorities:
         input.anomalies.length > 0

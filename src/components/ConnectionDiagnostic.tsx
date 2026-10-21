@@ -1,111 +1,194 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
-import { ConnectionDiagnostic as DiagnosticType } from '@/types/api';
+import React, { useState } from "react";
+import { ConnectionDiagnosis } from "@/lib/types";
+import { AlertTriangle, RefreshCw, Trash2, CheckCircle2 } from "lucide-react";
 
-interface Props {
-  error: string;
-  diagnostics?: DiagnosticType;
-  onRetry: () => void;
+export interface ConnectionDiagnosticProps {
+  diagnosis?: Partial<ConnectionDiagnosis> | null;
+  diagnostics?:
+    | (Partial<ConnectionDiagnosis> & {
+        reasons?: string[];
+        host?: string;
+        status?: string | number;
+      })
+    | null;
+  error?: string | null;
+  onRetry?: () => void;
+  onClearCache?: () => Promise<void> | void;
+  isRetrying?: boolean;
 }
 
-export default function ConnectionDiagnosticView({ error, diagnostics, onRetry }: Props) {
+export function ConnectionDiagnostic({
+  diagnosis,
+  diagnostics,
+  error,
+  onRetry,
+  onClearCache,
+  isRetrying = false,
+}: ConnectionDiagnosticProps) {
   const [clearing, setClearing] = useState(false);
   const [clearStatus, setClearStatus] = useState<string | null>(null);
 
-  const handleClearCache = async () => {
+  const diag = diagnosis || diagnostics || null;
+  const isOk = Boolean(diag?.ok);
+  const isUsingFallback = Boolean(diag?.isUsingFallback);
+
+  // Extract causes safely with full fallback protection
+  const rawCauses = diag?.causes ?? diagnostics?.reasons;
+  const causes: string[] = Array.isArray(rawCauses)
+    ? rawCauses.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+    : [];
+
+  const handleClear = async () => {
     setClearing(true);
+    setClearStatus(null);
     try {
-      const res = await fetch('/api/backend?action=clear-cache', { method: 'POST' });
-      const data = await res.json();
-      if (data.ok) {
-        setClearStatus('הזיכרון הזמני נוקה בהצלחה. בודק מחדש...');
-        setTimeout(() => {
-          onRetry();
-        }, 800);
+      if (onClearCache) {
+        await onClearCache();
+        setClearStatus("הזיכרון הזמני נוקה בהצלחה! הנתונים נטענים מחדש.");
       } else {
-        setClearStatus('שגיאה בניקוי זיכרון מטמון');
+        const res = await fetch("/api/backend?action=clear-cache", { method: "POST" });
+        const data = await res.json();
+        if (data.ok) {
+          setClearStatus("הזיכרון הזמני נוקה בהצלחה. בודק מחדש...");
+          if (onRetry) {
+            setTimeout(() => onRetry(), 800);
+          }
+        } else {
+          setClearStatus(data.error || "שגיאה בניקוי זיכרון מטמון");
+        }
       }
-    } catch (e) {
-      setClearStatus('תקלה בבקשת ניקוי הזיכרון');
+    } catch {
+      setClearStatus("תקלה בבקשת ניקוי הזיכרון הזמני");
     } finally {
       setClearing(false);
     }
   };
 
-  // חילוץ בטוח של רשימת הסיבות עם הגנה מפני undefined
-  const reasonsList = diagnostics?.reasons || [
-    'כתובת הפריסה (APPS_SCRIPT_URL) שונתה או אינה מצביעה על גרסה עדכנית של ה-Web App.',
-    'הרשאות הגישה ב-Apps Script אינן מוגדרות כ-"Anyone" (דורש גישה ציבורית ללא התחברות לחשבון).',
-    'פונקציית doGet ב-Apps Script מחזירה פלט HTML של שגיאת מערכת במקום אובייקט JSON תקני.'
-  ];
+  const hostDisplay = diag?.appsScriptHost || diagnostics?.host || "Google Apps Script";
+  const statusDisplay = diag?.httpStatus ?? diagnostics?.status ?? (isOk ? 200 : "ללא מענה");
+  const contentTypeDisplay = diag?.contentType || "application/json";
+  const errorMessage =
+    error ||
+    diag?.error ||
+    (isUsingFallback
+      ? "פעיל כעת במצב נתוני גיבוי מקומיים (ח. סבן) — אין תקשורת ישירה ל-Apps Script"
+      : "תקלת תקשורת מול שרת הנתונים של גוגל");
 
   return (
-    <div dir="rtl" className="max-w-3xl mx-auto my-8 p-6 bg-card border border-red-600/50 rounded-2xl shadow-lg text-card-foreground">
-      <div className="flex items-center gap-3 border-b border-border pb-4">
-        <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center font-bold text-xl">!</div>
-        <div>
-          <h2 className="text-xl font-bold text-red-600 dark:text-red-400">בעיית חיבור לגיליון הנתונים</h2>
-          <p className="text-sm text-muted-foreground">{error || 'תקלת תקשורת מול השרת'}</p>
+    <div
+      dir="rtl"
+      className={`max-w-4xl mx-auto my-6 p-6 rounded-3xl border shadow-card transition-all ${
+        isOk && !isUsingFallback
+          ? "bg-card border-emerald-500/30"
+          : isUsingFallback
+            ? "bg-card border-amber-500/40"
+            : "bg-card border-destructive/50"
+      } text-card-foreground`}
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-border pb-4">
+        <div className="flex items-center gap-3">
+          <div
+            className={`w-11 h-11 rounded-2xl flex items-center justify-center font-bold text-xl shadow-xs shrink-0 ${
+              isOk && !isUsingFallback
+                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                : isUsingFallback
+                  ? "bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                  : "bg-destructive/15 text-destructive"
+            }`}
+          >
+            {isOk && !isUsingFallback ? (
+              <CheckCircle2 className="h-6 w-6" />
+            ) : (
+              <AlertTriangle className="h-6 w-6" />
+            )}
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-foreground">
+              {isOk && !isUsingFallback
+                ? "חיבור פעיל ומסונכרן ל-Google Sheets"
+                : isUsingFallback
+                  ? "אזהרת סנכרון: שימוש בנתוני גיבוי מקומיים"
+                  : "בעיית חיבור לגיליון הנתונים"}
+            </h2>
+            <p className="text-xs text-muted-foreground mt-0.5">{errorMessage}</p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2">
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              disabled={isRetrying}
+              className="flex items-center gap-1.5 px-4 py-2 bg-primary hover:opacity-90 disabled:opacity-50 text-primary-foreground rounded-2xl text-xs font-bold transition shadow-xs"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isRetrying ? "animate-spin" : ""}`} />
+              <span>{isRetrying ? "בודק שוב..." : "בדוק חיבור עכשיו"}</span>
+            </button>
+          )}
+          <button
+            onClick={handleClear}
+            disabled={clearing}
+            className="flex items-center gap-1.5 px-3.5 py-2 bg-muted hover:bg-muted/80 disabled:opacity-50 text-foreground rounded-2xl text-xs font-semibold transition border border-border shadow-xs"
+          >
+            <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
+            <span>{clearing ? "מנקה..." : "נקה זיכרון מטמון"}</span>
+          </button>
         </div>
       </div>
 
-      <div className="mt-6 space-y-4 text-sm">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-          <div className="p-3 bg-muted/40 rounded-xl border border-border">
-            <span className="block text-xs text-muted-foreground">מארח היעד (Host)</span>
-            <strong className="font-mono text-xs truncate block">{diagnostics?.appsScriptHost || diagnostics?.host || 'Google Apps Script'}</strong>
+      <div className="mt-5 space-y-4 text-xs">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="p-3 bg-muted/40 rounded-2xl border border-border">
+            <span className="block text-[11px] text-muted-foreground">מארח היעד (Host)</span>
+            <strong className="font-mono text-xs truncate block mt-0.5">{hostDisplay}</strong>
           </div>
-          <div className="p-3 bg-muted/40 rounded-xl border border-border">
-            <span className="block text-xs text-muted-foreground">קוד סטטוס HTTP</span>
-            <strong className="font-mono text-xs">{diagnostics?.httpStatus || diagnostics?.status || '500 / שגיאה'}</strong>
+          <div className="p-3 bg-muted/40 rounded-2xl border border-border">
+            <span className="block text-[11px] text-muted-foreground">קוד סטטוס HTTP</span>
+            <strong className="font-mono text-xs block mt-0.5">{statusDisplay}</strong>
           </div>
-          <div className="p-3 bg-muted/40 rounded-xl border border-border">
-            <span className="block text-xs text-muted-foreground">סוג תוכן (Content-Type)</span>
-            <strong className="font-mono text-xs truncate block">{diagnostics?.contentType || 'application/json'}</strong>
+          <div className="p-3 bg-muted/40 rounded-2xl border border-border">
+            <span className="block text-[11px] text-muted-foreground">סוג תוכן (Content-Type)</span>
+            <strong className="font-mono text-xs truncate block mt-0.5">
+              {contentTypeDisplay}
+            </strong>
           </div>
         </div>
 
-        {diagnostics?.first200Chars && (
+        {diag?.first200Chars && (
           <div>
-            <h4 className="font-bold mb-2 text-xs text-muted-foreground">תוכן התשובה מהשרת (Raw Snippet):</h4>
-            <pre className="p-3 bg-black text-emerald-400 rounded-xl font-mono text-xs overflow-x-auto whitespace-pre-wrap dir-ltr text-left border border-border">
-              {diagnostics.first200Chars}
+            <h4 className="font-bold mb-1.5 text-xs text-muted-foreground">
+              תוכן התשובה מהשרת (Raw Snippet):
+            </h4>
+            <pre className="p-3 bg-neutral-900 text-emerald-400 rounded-2xl font-mono text-[11px] overflow-x-auto whitespace-pre-wrap dir-ltr text-left border border-border">
+              {diag.first200Chars}
             </pre>
           </div>
         )}
 
-        <div>
-          <h4 className="font-bold mb-2 text-xs">סיבות נפוצות לכשל והנחיות לפתרון:</h4>
-          <ul className="list-disc list-inside space-y-1 text-xs text-muted-foreground">
-            {reasonsList.map((r, i) => (
-              <li key={i}>{r}</li>
-            ))}
-          </ul>
-        </div>
+        {/* 3 Causes block: Rendered ONLY if causes exist */}
+        {causes.length > 0 && (
+          <div className="p-4 rounded-2xl bg-muted/30 border border-border space-y-2">
+            <h4 className="font-bold text-xs text-foreground">סיבות נפוצות לכשל והנחיות לפתרון:</h4>
+            <ul className="list-disc list-inside space-y-1.5 text-xs text-muted-foreground pr-1">
+              {(causes ?? []).map((cause, i) => (
+                <li key={i} className="leading-relaxed">
+                  {cause}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
 
       {clearStatus && (
-        <div className="mt-4 p-2.5 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-lg text-xs text-center font-medium">
+        <div className="mt-4 p-3 bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 rounded-xl text-xs text-center font-medium animate-in fade-in">
           {clearStatus}
         </div>
       )}
-
-      <div className="mt-6 flex flex-wrap gap-3 pt-4 border-t border-border">
-        <button
-          onClick={onRetry}
-          className="px-5 py-2.5 bg-primary hover:opacity-90 text-primary-foreground rounded-xl text-sm font-semibold transition-all shadow"
-        >
-          בדוק שוב עכשיו
-        </button>
-        <button
-          onClick={handleClearCache}
-          disabled={clearing}
-          className="px-5 py-2.5 bg-transparent border border-border hover:bg-muted text-foreground rounded-xl text-sm font-semibold transition-all"
-        >
-          {clearing ? 'מנקה זיכרון...' : 'נקה זיכרון מטמון (Cache)'}
-        </button>
-      </div>
     </div>
   );
 }
+
+export default ConnectionDiagnostic;

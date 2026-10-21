@@ -163,7 +163,8 @@ export function TachographCanvasViewer({
     if (
       rawLink.startsWith("http://") ||
       rawLink.startsWith("https://") ||
-      rawLink.startsWith("data:")
+      rawLink.startsWith("data:") ||
+      rawLink.startsWith("/")
     ) {
       return rawLink;
     }
@@ -177,7 +178,11 @@ export function TachographCanvasViewer({
     setImageSourceDesc("מאתר דיסקית ומאמת קישור...");
 
     const img = new Image();
-    img.crossOrigin = "anonymous";
+    // Only set crossOrigin for remote http(s) images to avoid canvas taint
+    if (discImageSrc.startsWith("http://") || discImageSrc.startsWith("https://")) {
+      img.crossOrigin = "anonymous";
+    }
+
     img.onload = () => {
       imageObjRef.current = img;
       setImageLoaded(true);
@@ -191,9 +196,11 @@ export function TachographCanvasViewer({
     };
 
     img.onerror = () => {
-      // Fallback to embedded high-res vector asset
+      // Prevent any looping by detaching handler immediately
+      img.onerror = null;
       if (img.src !== DEFAULT_TACHOGRAPH_DISC_DATA_URL) {
         console.warn("Drive scan image unavailable, falling back to verified disc asset");
+        img.removeAttribute("crossorigin");
         img.src = DEFAULT_TACHOGRAPH_DISC_DATA_URL;
         setImageSourceDesc("דיסקית ארכיון מאומתת (גיבוי סבן)");
       } else {
@@ -422,32 +429,54 @@ export function TachographCanvasViewer({
     isDraggingRef.current = false;
   };
 
-  const handleWheel = (e: React.WheelEvent<HTMLCanvasElement>) => {
-    e.preventDefault();
-    const zoomFactor = e.deltaY < 0 ? 1.15 : 0.88;
-    setZoom((prevZoom) => {
-      const nextZoom = Math.min(Math.max(prevZoom * zoomFactor, 0.4), 6);
-      return nextZoom;
-    });
-  };
+  // Non-passive wheel & touch registration for smooth pinch/drag without passive event warnings
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-  // Touch support
-  const handleTouchStart = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (e.touches.length === 1) {
-      isDraggingRef.current = true;
+    const onWheel = (e: WheelEvent) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.88;
+      setZoom((prevZoom) => Math.min(Math.max(prevZoom * zoomFactor, 0.4), 6));
+    };
+
+    const onTouchStart = (e: TouchEvent) => {
+      if (e.touches.length === 1) {
+        e.preventDefault();
+        isDraggingRef.current = true;
+        const touch = e.touches[0];
+        dragStartRef.current = { x: touch.clientX - pan.x, y: touch.clientY - pan.y };
+      }
+    };
+
+    const onTouchMove = (e: TouchEvent) => {
+      if (!isDraggingRef.current || e.touches.length !== 1) return;
+      e.preventDefault();
       const touch = e.touches[0];
-      dragStartRef.current = { x: touch.clientX - pan.x, y: touch.clientY - pan.y };
-    }
-  };
+      setPan({
+        x: touch.clientX - dragStartRef.current.x,
+        y: touch.clientY - dragStartRef.current.y,
+      });
+    };
 
-  const handleTouchMove = (e: React.TouchEvent<HTMLCanvasElement>) => {
-    if (!isDraggingRef.current || e.touches.length !== 1) return;
-    const touch = e.touches[0];
-    setPan({
-      x: touch.clientX - dragStartRef.current.x,
-      y: touch.clientY - dragStartRef.current.y,
-    });
-  };
+    const onTouchEnd = () => {
+      isDraggingRef.current = false;
+    };
+
+    canvas.addEventListener("wheel", onWheel, { passive: false });
+    canvas.addEventListener("touchstart", onTouchStart, { passive: false });
+    canvas.addEventListener("touchmove", onTouchMove, { passive: false });
+    canvas.addEventListener("touchend", onTouchEnd);
+    canvas.addEventListener("touchcancel", onTouchEnd);
+
+    return () => {
+      canvas.removeEventListener("wheel", onWheel);
+      canvas.removeEventListener("touchstart", onTouchStart);
+      canvas.removeEventListener("touchmove", onTouchMove);
+      canvas.removeEventListener("touchend", onTouchEnd);
+      canvas.removeEventListener("touchcancel", onTouchEnd);
+    };
+  }, [pan.x, pan.y]);
 
   // Save disc approval
   const handleApproveDisc = async () => {
@@ -810,7 +839,8 @@ export function TachographCanvasViewer({
             {/* Canvas Viewport (Drag & Wheel interactive) */}
             <div
               ref={containerRef}
-              className="relative h-[480px] w-full cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[#090d13]"
+              className="relative h-[480px] w-full cursor-grab active:cursor-grabbing select-none overflow-hidden bg-[#090d13] touch-none"
+              style={{ touchAction: "none" }}
             >
               <canvas
                 ref={canvasRef}
@@ -818,11 +848,8 @@ export function TachographCanvasViewer({
                 onMouseMove={handleMouseMove}
                 onMouseUp={handleMouseUp}
                 onMouseLeave={handleMouseUp}
-                onWheel={handleWheel}
-                onTouchStart={handleTouchStart}
-                onTouchMove={handleTouchMove}
-                onTouchEnd={handleMouseUp}
-                className="absolute inset-0 block h-full w-full"
+                className="absolute inset-0 block h-full w-full touch-none"
+                style={{ touchAction: "none" }}
               />
 
               {/* Floating guidance overlay */}

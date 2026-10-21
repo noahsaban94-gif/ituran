@@ -53,7 +53,9 @@ function SitesScreen() {
 
   const cities = Array.from(
     new Set(
-      sites.map((s) => getSiteCity(s as RawSiteRecord)).filter((c) => Boolean(c && c !== "אחר")),
+      (sites || [])
+        .map((s) => (s ? getSiteCity(s as RawSiteRecord) : ""))
+        .filter((c) => Boolean(c && c !== "אחר")),
     ),
   );
 
@@ -62,18 +64,19 @@ function SitesScreen() {
   const filteredSites = (sites || []).filter((s) => {
     if (!s) return false;
     const raw = s as RawSiteRecord;
-    const address = getSiteAddress(raw);
-    const city = getSiteCity(raw);
-    const customerList = getSiteCustomers(raw);
+    const address = getSiteAddress(raw) || "";
+    const city = getSiteCity(raw) || "";
+    const customerList = getSiteCustomers(raw) || [];
 
     const matchesSearch =
       !searchTrimmed ||
-      address.toLowerCase().includes(searchTrimmed) ||
-      city.toLowerCase().includes(searchTrimmed) ||
-      customerList.some((c) => c.toLowerCase().includes(searchTrimmed));
+      (typeof address === "string" && address.toLowerCase().includes(searchTrimmed)) ||
+      (typeof city === "string" && city.toLowerCase().includes(searchTrimmed)) ||
+      (Array.isArray(customerList) &&
+        customerList.some((c) => typeof c === "string" && c.toLowerCase().includes(searchTrimmed)));
 
     const matchesCity = selectedCity === "all" || city === selectedCity;
-    return matchesSearch && matchesCity;
+    return Boolean(matchesSearch && matchesCity);
   });
 
   // Get visits for drilldown site

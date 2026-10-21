@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { BootstrapData } from "@/lib/sheets-api";
+import { normalizeDiagnosis } from "@/lib/types";
 import { toast } from "sonner";
 
 async function fetchBootstrap(force = false): Promise<BootstrapData> {
@@ -82,7 +83,7 @@ export function useLogisticsData() {
     discs: query.data?.discs || [],
     deliveryNotes: query.data?.deliveryNotes || [],
     anomalies: query.data?.anomalies || [],
-    diagnosis: query.data?.diagnosis,
+    diagnosis: query.data?.diagnosis ? normalizeDiagnosis(query.data.diagnosis) : undefined,
     isLoading: query.isLoading,
     isRefetching: query.isRefetching || refreshMutation.isPending,
     error: query.error as Error | null,

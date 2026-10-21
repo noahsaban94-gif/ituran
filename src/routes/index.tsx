@@ -4,6 +4,7 @@ import { useLogisticsData } from "@/hooks/use-logistics-data";
 import { CalendarMonth } from "@/components/CalendarMonth";
 import { DayDrawer } from "@/components/DayDrawer";
 import { ConnectionDiagnostic } from "@/components/ConnectionDiagnostic";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageHeader } from "@/components/AppShell";
 import {
   Truck,
@@ -79,12 +80,14 @@ function DashboardScreen() {
       <div className="mx-auto max-w-7xl px-4 py-6 space-y-6 sm:px-8">
         {/* Connection Diagnosis Banner if any issue exists */}
         {diagnosis && (!diagnosis.ok || diagnosis.isUsingFallback) && (
-          <ConnectionDiagnostic
-            diagnosis={diagnosis}
-            onRetry={refetch}
-            onClearCache={clearCache}
-            isRetrying={isRefetching}
-          />
+          <ErrorBoundary fallbackTitle="תקלה בהצגת אבחון חיבור">
+            <ConnectionDiagnostic
+              diagnosis={diagnosis}
+              onRetry={refetch}
+              onClearCache={clearCache}
+              isRetrying={isRefetching}
+            />
+          </ErrorBoundary>
         )}
 
         {/* Section 5.1: Live Summary Cards */}

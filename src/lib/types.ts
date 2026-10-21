@@ -229,3 +229,30 @@ export interface ConnectionDiagnosis {
   isUsingFallback?: boolean;
   error?: string;
 }
+
+export function normalizeDiagnosis(raw?: Partial<ConnectionDiagnosis> | null): ConnectionDiagnosis {
+  const defaultCauses = [
+    "כתובת פריסה (Deployment URL) ישנה, אינה מעודכנת או אינה מצביעה ל-Web App הפעיל.",
+    "הרשאת הגישה ל-Web App אינה מוגדרת ל-Anyone (דורש התחברות לחשבון Google).",
+    "פונקציית doGet ב-Apps Script מחזירה דף HTML במקום אובייקט JSON תקין.",
+  ];
+
+  const causesList = Array.isArray(raw?.causes)
+    ? raw!.causes.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+    : defaultCauses;
+
+  return {
+    ok: Boolean(raw?.ok),
+    appsScriptHost: raw?.appsScriptHost || "Google Apps Script",
+    httpStatus: typeof raw?.httpStatus === "number" ? raw.httpStatus : undefined,
+    contentType: raw?.contentType || "application/json",
+    first200Chars: raw?.first200Chars,
+    causes: causesList.length > 0 ? causesList : defaultCauses,
+    responseTimeMs: raw?.responseTimeMs,
+    lastSyncTime: raw?.lastSyncTime,
+    rowsCount: raw?.rowsCount,
+    lastDataDate: raw?.lastDataDate,
+    isUsingFallback: Boolean(raw?.isUsingFallback),
+    error: raw?.error,
+  };
+}

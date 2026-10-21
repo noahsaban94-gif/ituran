@@ -134,24 +134,54 @@ export function buildFallbackDiscs(notes: DeliveryNoteRow[]): TachographDiscRow[
   return Array.from(discMap.values());
 }
 
+export function normalizeDiagnosis(raw?: Partial<ConnectionDiagnosis> | null): ConnectionDiagnosis {
+  const defaultCauses = [
+    "כתובת פריסה (Deployment URL) ישנה, אינה מעודכנת או אינה מצביעה ל-Web App הפעיל.",
+    "הרשאת הגישה ל-Web App אינה מוגדרת ל-Anyone (דורש התחברות לחשבון Google).",
+    "פונקציית doGet ב-Apps Script מחזירה דף HTML במקום אובייקט JSON תקין.",
+  ];
+
+  const causesList = Array.isArray(raw?.causes)
+    ? raw!.causes.filter((c): c is string => typeof c === "string" && c.trim().length > 0)
+    : defaultCauses;
+
+  return {
+    ok: Boolean(raw?.ok),
+    appsScriptHost: raw?.appsScriptHost || "Google Apps Script",
+    httpStatus: typeof raw?.httpStatus === "number" ? raw.httpStatus : undefined,
+    contentType: raw?.contentType || "application/json",
+    first200Chars: raw?.first200Chars,
+    causes: causesList.length > 0 ? causesList : defaultCauses,
+    responseTimeMs: raw?.responseTimeMs,
+    lastSyncTime: raw?.lastSyncTime,
+    rowsCount: raw?.rowsCount,
+    lastDataDate: raw?.lastDataDate,
+    isUsingFallback: Boolean(raw?.isUsingFallback),
+    error: raw?.error,
+  };
+}
+
 export async function fetchBootstrapData(forceRefresh = false): Promise<BootstrapData> {
   const now = Date.now();
   if (!forceRefresh && cache && now - cache.timestamp < CACHE_TTL_MS) {
-    return cache.data;
+    return {
+      ...cache.data,
+      diagnosis: normalizeDiagnosis(cache.data.diagnosis),
+    };
   }
 
   const appsScriptUrl = process.env.APPS_SCRIPT_URL;
   const token = process.env.API_TOKEN || "";
   const startTime = Date.now();
 
-  const diagnosis: ConnectionDiagnosis = {
+  const diagnosis: ConnectionDiagnosis = normalizeDiagnosis({
     ok: false,
     causes: [
       "כתובת פריסה (Deployment URL) ישנה, אינה מעודכנת או אינה מצביעה ל-Web App הפעיל.",
       "הרשאת הגישה ל-Web App אינה מוגדרת ל-Anyone (דורש התחברות לחשבון Google).",
       "פונקציית doGet ב-Apps Script מחזירה דף HTML במקום אובייקט JSON תקין.",
     ],
-  };
+  });
 
   // Case 1: Real Apps Script URL is configured
   if (appsScriptUrl && appsScriptUrl.includes("/exec")) {
@@ -210,6 +240,7 @@ export async function fetchBootstrapData(forceRefresh = false): Promise<Bootstra
             diagnosis.lastDataDate = visits[0]?.date || "18/10/2026";
             diagnosis.lastSyncTime = new Date().toLocaleTimeString("he-IL");
 
+            const normalizedDiagnosis = normalizeDiagnosis(diagnosis);
             const result: BootstrapData = {
               discs,
               visits,
@@ -218,7 +249,7 @@ export async function fetchBootstrapData(forceRefresh = false): Promise<Bootstra
               deliveryNotes: notes,
               anomalies,
               user: payload.data.user || { name: "ראמי מסארווה", role: "סדרן עבודה ואיש שטח" },
-              diagnosis,
+              diagnosis: normalizedDiagnosis,
             };
 
             cache = { data: result, timestamp: now };
@@ -260,6 +291,7 @@ export async function fetchBootstrapData(forceRefresh = false): Promise<Bootstra
   diagnosis.lastDataDate = visits[0]?.date || "2026-10-18";
   diagnosis.lastSyncTime = new Date().toLocaleTimeString("he-IL");
 
+  const normalizedDiagnosis = normalizeDiagnosis(diagnosis);
   const result: BootstrapData = {
     discs,
     visits,
@@ -268,7 +300,7 @@ export async function fetchBootstrapData(forceRefresh = false): Promise<Bootstra
     deliveryNotes: attachedNotes,
     anomalies,
     user: { name: "ראמי מסארווה", role: "סדרן עבודה ואיש שטח" },
-    diagnosis,
+    diagnosis: normalizedDiagnosis,
   };
 
   cache = { data: result, timestamp: now };

@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useLogisticsData } from "@/hooks/use-logistics-data";
 import { ConnectionDiagnostic } from "@/components/ConnectionDiagnostic";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { PageHeader } from "@/components/AppShell";
 import {
   Activity,
@@ -154,12 +155,14 @@ function StatusScreen() {
         </div>
 
         {/* Diagnostic Panel */}
-        <ConnectionDiagnostic
-          diagnosis={diagnosis}
-          onRetry={refetch}
-          onClearCache={clearCache}
-          isRetrying={isRefetching}
-        />
+        <ErrorBoundary fallbackTitle="תקלה בהצגת אבחון חיבור">
+          <ConnectionDiagnostic
+            diagnosis={diagnosis}
+            onRetry={refetch}
+            onClearCache={clearCache}
+            isRetrying={isRefetching}
+          />
+        </ErrorBoundary>
 
         {/* Tab row counts table */}
         <div className="rounded-3xl border bg-card p-5 shadow-card space-y-3">

@@ -106,9 +106,10 @@ export function TachographViewer({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [date]);
 
-  const discImageSrc = disc?.["קישור לדיסקית"]?.startsWith("http")
-    ? disc["קישור לדיסקית"]
-    : DEFAULT_TACHOGRAPH_DISC_DATA_URL;
+  const discImageSrc =
+    disc?.["קישור לדיסקית"]?.startsWith("http") || disc?.["קישור לדיסקית"]?.startsWith("/")
+      ? disc["קישור לדיסקית"]
+      : DEFAULT_TACHOGRAPH_DISC_DATA_URL;
 
   // Save disc approval
   const handleApproveDisc = async () => {
@@ -213,6 +214,13 @@ export function TachographViewer({
               style={{
                 transform: `scale(${zoom}) rotate(${rotation}deg)`,
                 filter: `${isInverted ? "invert(1) " : ""}contrast(${contrast}%)`,
+              }}
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.onerror = null;
+                if (target.src !== DEFAULT_TACHOGRAPH_DISC_DATA_URL) {
+                  target.src = DEFAULT_TACHOGRAPH_DISC_DATA_URL;
+                }
               }}
             />
 

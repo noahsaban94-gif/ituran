@@ -29,7 +29,7 @@ export async function approvalFn(rowId: number, status: string, approver: string
       body: JSON.stringify({
         action: "saveDisc",
         row: rowId,
-        fix: { approve: true, approver }
+        fix: { approve: true, approver },
       }),
     });
     return await res.json();

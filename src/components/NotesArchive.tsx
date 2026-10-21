@@ -185,6 +185,11 @@ export function NotesArchive() {
                       alt=""
                       loading="lazy"
                       className="h-24 w-20 shrink-0 rounded-xl border object-cover"
+                      onError={(e) => {
+                        const target = e.currentTarget;
+                        target.onerror = null;
+                        target.style.display = "none";
+                      }}
                     />
                   )}
                   <div className="min-w-0 flex-1 space-y-1">
