@@ -36,10 +36,15 @@ export function NotesArchive() {
   const [viewMode, setViewMode] = useState<"cards" | "sheet">("cards");
   const { notes: liveNotes, isLoading, isLive, lastSync, refresh } = useLiveSheetData();
 
-  const currentNotes = liveNotes;
-
-  const list = currentNotes.filter((n) =>
-    [n.customer, n.id, n.yard, n.date, n.customerNo, n.comaxOrder, n.site].join(" ").includes(q),
+  const searchFilter = (q || "").trim().toLowerCase();
+  const list = currentNotes.filter(
+    (n) =>
+      !searchFilter ||
+      [n.customer, n.id, n.yard, n.date, n.customerNo, n.comaxOrder, n.site]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(searchFilter),
   );
 
   const handleRefresh = async () => {

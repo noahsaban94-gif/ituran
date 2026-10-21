@@ -44,8 +44,10 @@ function TachographScreen() {
 
   const dayDisc =
     discs.find((d) => {
-      const dDate = d["תאריך מתוקן"] || d["תאריך דיסקית"] || "";
-      return dDate.includes(selectedDate) || selectedDate.includes(dDate);
+      const dDate = String(d?.["תאריך מתוקן"] || d?.["תאריך דיסקית"] || "").trim();
+      const sDate = String(selectedDate || "").trim();
+      if (!dDate || !sDate) return false;
+      return dDate.includes(sDate) || sDate.includes(dDate);
     }) || discs[0];
 
   const dayAnomalies = anomalies.filter((a) => a.date === selectedDate);

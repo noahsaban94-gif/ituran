@@ -111,14 +111,100 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       try {
         const parsed = JSON.parse(rawText);
         if (parsed.ok && parsed.data) {
+          const rawSites: Record<string, unknown>[] = Array.isArray(parsed.data.sites)
+            ? (parsed.data.sites as Record<string, unknown>[])
+            : [];
+          const rawCities: Record<string, unknown>[] = Array.isArray(parsed.data.cities)
+            ? (parsed.data.cities as Record<string, unknown>[])
+            : [];
+          const rawVisits: Record<string, unknown>[] = Array.isArray(parsed.data.visits)
+            ? (parsed.data.visits as Record<string, unknown>[])
+            : [];
+          const rawDiscs: Record<string, unknown>[] = Array.isArray(parsed.data.discs)
+            ? (parsed.data.discs as Record<string, unknown>[])
+            : [];
+          const rawNotes: Record<string, unknown>[] = Array.isArray(parsed.data.deliveryNotes)
+            ? (parsed.data.deliveryNotes as Record<string, unknown>[])
+            : [];
+
+          // נירמול אתרים למבנה תקני וחסין שגיאות
+          const sites = rawSites.map((s, idx) => {
+            const address = String(
+              s?.address ||
+                s?.["כתובת"] ||
+                s?.["כתובת אספקה"] ||
+                s?.["אתר"] ||
+                s?.["כתובת ועיר"] ||
+                "",
+            ).trim();
+            const city = String(s?.city || s?.["עיר"] || "").trim() || "אחר";
+            let customers: string[] = [];
+            if (Array.isArray(s?.customers)) {
+              customers = s.customers.map((c: unknown) => String(c ?? "")).filter(Boolean);
+            } else if (typeof s?.customers === "string") {
+              customers = s.customers
+                .split(",")
+                .map((c: string) => c.trim())
+                .filter(Boolean);
+            } else if (typeof s?.["לקוחות באתר"] === "string") {
+              customers = s["לקוחות באתר"]
+                .split(",")
+                .map((c: string) => c.trim())
+                .filter(Boolean);
+            } else if (typeof s?.["לקוחות"] === "string") {
+              customers = s["לקוחות"]
+                .split(",")
+                .map((c: string) => c.trim())
+                .filter(Boolean);
+            } else if (typeof s?.["לקוח"] === "string") {
+              customers = [s["לקוח"].trim()];
+            } else if (typeof s?.["שם לקוח"] === "string") {
+              customers = [s["שם לקוח"].trim()];
+            }
+
+            const visitCount = Number(s?.visitCount || s?.["ביקורים"] || 0);
+
+            return {
+              ...s,
+              siteKey: String(
+                s?.siteKey || s?.["מפתח אתר"] || `${city}|${address}` || `site-${idx}`,
+              ),
+              address: address || "כתובת לא צוינה",
+              city,
+              customers,
+              visitCount,
+              lastVisitDate: String(s?.lastVisitDate || s?.["תאריך אחרון"] || ""),
+              measurementCount: Number(s?.measurementCount || s?.["מדידות"] || 0),
+              medianSiteMinutes: Number(s?.medianSiteMinutes || s?.["חציון באתר"] || 0),
+              p80SiteMinutes: Number(s?.p80SiteMinutes || s?.["P80 באתר"] || 0),
+              maxSiteMinutes: Number(s?.maxSiteMinutes || s?.["מקס׳ באתר"] || 0),
+              medianDriveMinutes: Number(s?.medianDriveMinutes || s?.["נסיעה (חציון)"] || 0),
+              confidence:
+                s?.confidence ||
+                s?.["רמת ביטחון"] ||
+                (visitCount >= 5 ? "גבוה" : visitCount >= 2 ? "בינוני" : "נמוך"),
+            };
+          });
+
+          // נירמול ערים
+          const cities = rawCities.map((c, idx) => ({
+            ...c,
+            city: String(c?.city || c?.["עיר"] || `עיר-${idx}`).trim(),
+            visitCount: Number(c?.visitCount || c?.["ביקורים"] || 0),
+            measurementCount: Number(c?.measurementCount || c?.["מדידות"] || 0),
+            medianSiteMinutes: Number(c?.medianSiteMinutes || c?.["חציון באתר"] || 0),
+            p80SiteMinutes: Number(c?.p80SiteMinutes || c?.["P80 באתר"] || 0),
+            medianDriveMinutes: Number(c?.medianDriveMinutes || c?.["נסיעה (חציון)"] || 0),
+          }));
+
           return res.status(200).json({
             ok: true,
             data: {
-              discs: parsed.data.discs || [],
-              visits: parsed.data.visits || [],
-              sites: parsed.data.sites || [],
-              cities: parsed.data.cities || [],
-              deliveryNotes: parsed.data.deliveryNotes || [],
+              discs: rawDiscs,
+              visits: rawVisits,
+              sites,
+              cities,
+              deliveryNotes: rawNotes,
               anomalies: [],
               user: parsed.data.user || { name: "ראמי מסארווה", role: "סדרן עבודה ואיש שטח" },
               diagnosis: {
@@ -128,10 +214,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 httpStatus: sheetRes.status,
                 responseTimeMs,
                 rowsCount: {
-                  discs: (parsed.data.discs || []).length,
-                  visits: (parsed.data.visits || []).length,
-                  sites: (parsed.data.sites || []).length,
-                  cities: (parsed.data.cities || []).length,
+                  discs: rawDiscs.length,
+                  visits: rawVisits.length,
+                  sites: sites.length,
+                  cities: cities.length,
                 },
                 lastSyncTime: new Date().toLocaleTimeString("he-IL"),
               },

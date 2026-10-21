@@ -186,9 +186,18 @@ export async function fetchBootstrapData(forceRefresh = false): Promise<Bootstra
 
             const notes: DeliveryNoteRow[] = payload.data.deliveryNotes || [];
             const discs: TachographDiscRow[] = payload.data.discs || [];
-            const visits: VisitRecord[] = payload.data.visits || buildVisitsFromNotes(notes);
-            const sites: SiteSummary[] = payload.data.sites || buildSitesSummary(visits);
-            const cities: CitySummary[] = payload.data.cities || buildCitiesSummary(sites);
+            const visits: VisitRecord[] =
+              payload.data.visits && payload.data.visits.length > 0
+                ? payload.data.visits
+                : buildVisitsFromNotes(notes);
+            const sites: SiteSummary[] =
+              payload.data.sites && payload.data.sites.length > 0
+                ? payload.data.sites
+                : buildSitesSummary(visits);
+            const cities: CitySummary[] =
+              payload.data.cities && payload.data.cities.length > 0
+                ? payload.data.cities
+                : buildCitiesSummary(sites);
             const anomalies = detectDeterministicAnomalies(visits, discs);
 
             diagnosis.rowsCount = {

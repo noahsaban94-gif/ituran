@@ -2,7 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useLogisticsData } from "@/hooks/use-logistics-data";
 import { PageHeader } from "@/components/AppShell";
-import { Building, Search, RefreshCw, Compass } from "lucide-react";
+import { CitySummary } from "@/lib/types";
+import { Building, Search, RefreshCw } from "lucide-react";
 
 export const Route = createFileRoute("/cities")({
   head: () => ({
@@ -17,11 +18,24 @@ export const Route = createFileRoute("/cities")({
   component: CitiesScreen,
 });
 
+type RawCityRecord = Partial<CitySummary> & Record<string, unknown>;
+
+function getCityName(city: RawCityRecord): string {
+  const c = city.city || city["עיר"] || "אחר";
+  return String(c).trim();
+}
+
 function CitiesScreen() {
   const { cities, isLoading, isRefetching, refetch } = useLogisticsData();
   const [search, setSearch] = useState("");
 
-  const filteredCities = cities.filter((c) => c.city.includes(search));
+  const searchTrimmed = (search || "").trim().toLowerCase();
+
+  const filteredCities = (cities || []).filter((c) => {
+    if (!c) return false;
+    const cityName = getCityName(c as RawCityRecord);
+    return !searchTrimmed || cityName.toLowerCase().includes(searchTrimmed);
+  });
 
   return (
     <>
@@ -78,36 +92,48 @@ function CitiesScreen() {
                     </td>
                   </tr>
                 ) : (
-                  filteredCities.map((city) => (
-                    <tr key={city.city} className="hover:bg-muted/40 transition">
-                      <td className="p-3.5 font-bold text-foreground">
-                        <div className="flex items-center gap-2">
-                          <Building className="h-4 w-4 text-primary" />
-                          <span>{city.city}</span>
-                        </div>
-                      </td>
+                  filteredCities.map((city, idx) => {
+                    const raw = city as RawCityRecord;
+                    const cityName = getCityName(raw);
+                    const visitCount = Number(raw.visitCount || raw["ביקורים"] || 0);
+                    const measurementCount = Number(raw.measurementCount || raw["מדידות"] || 0);
+                    const medianSiteMinutes = Number(
+                      raw.medianSiteMinutes || raw["חציון באתר"] || 0,
+                    );
+                    const p80SiteMinutes = Number(raw.p80SiteMinutes || raw["P80 באתר"] || 0);
+                    const medianDriveMinutes = Number(
+                      raw.medianDriveMinutes || raw["נסיעה (חציון)"] || 0,
+                    );
 
-                      <td className="p-3.5 text-center font-bold">{city.visitCount}</td>
+                    return (
+                      <tr key={cityName || `city-${idx}`} className="hover:bg-muted/40 transition">
+                        <td className="p-3.5 font-bold text-foreground">
+                          <div className="flex items-center gap-2">
+                            <Building className="h-4 w-4 text-primary" />
+                            <span>{cityName}</span>
+                          </div>
+                        </td>
 
-                      <td className="p-3.5 text-center text-muted-foreground">
-                        {city.measurementCount > 0 ? city.measurementCount : "אין מדידה"}
-                      </td>
+                        <td className="p-3.5 text-center font-bold">{visitCount}</td>
 
-                      <td className="p-3.5 text-center font-bold text-purple-700">
-                        {city.medianSiteMinutes > 0 ? `${city.medianSiteMinutes} דק׳` : "אין מדידה"}
-                      </td>
+                        <td className="p-3.5 text-center text-muted-foreground">
+                          {measurementCount > 0 ? measurementCount : "אין מדידה"}
+                        </td>
 
-                      <td className="p-3.5 text-center font-bold text-amber-700">
-                        {city.p80SiteMinutes > 0 ? `${city.p80SiteMinutes} דק׳` : "אין מדידה"}
-                      </td>
+                        <td className="p-3.5 text-center font-bold text-purple-700">
+                          {medianSiteMinutes > 0 ? `${medianSiteMinutes} דק׳` : "אין מדידה"}
+                        </td>
 
-                      <td className="p-3.5 text-center font-bold text-cyan-800 dark:text-cyan-400">
-                        {city.medianDriveMinutes > 0
-                          ? `${city.medianDriveMinutes} דק׳`
-                          : "אין מדידה"}
-                      </td>
-                    </tr>
-                  ))
+                        <td className="p-3.5 text-center font-bold text-amber-700">
+                          {p80SiteMinutes > 0 ? `${p80SiteMinutes} דק׳` : "אין מדידה"}
+                        </td>
+
+                        <td className="p-3.5 text-center font-bold text-cyan-800 dark:text-cyan-400">
+                          {medianDriveMinutes > 0 ? `${medianDriveMinutes} דק׳` : "אין מדידה"}
+                        </td>
+                      </tr>
+                    );
+                  })
                 )}
               </tbody>
             </table>
