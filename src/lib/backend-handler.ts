@@ -1,5 +1,5 @@
 import { fetchBootstrapData, invalidateCache, saveDiscCorrection } from "./sheets-api";
-import { analyzeDayWithGemini } from "./gemini-analysis";
+import { analyzeDayWithGemini, analyzeTachographDiscVision } from "./gemini-analysis";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -41,7 +41,7 @@ export async function handleBackendApiRequest(request: Request): Promise<Respons
     );
   }
 
-  // 3. AI Analysis
+  // 3. AI Analysis (Text / Day Summary)
   if (url.pathname.includes("/api/ai/analyze-disc") || action === "analyze-disc") {
     if (method !== "POST") {
       return Response.json({ ok: false, error: "Method Not Allowed" }, { status: 405 });
@@ -56,6 +56,30 @@ export async function handleBackendApiRequest(request: Request): Promise<Respons
     } catch (err) {
       return Response.json(
         { ok: false, error: "שגיאה בניתוח AI: " + String(err) },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+  }
+
+  // 3.1 NEW: Vision Analysis Endpoint for Tachograph Discs
+  if (action === "analyze-vision" || url.pathname.includes("/api/ai/analyze-vision")) {
+    if (method !== "POST") {
+      return Response.json({ ok: false, error: "Method Not Allowed" }, { status: 405 });
+    }
+    try {
+      const body = await request.json();
+      const { imageBase64, mimeType } = body;
+      if (!imageBase64) {
+        return Response.json({ ok: false, error: "חסר נתון תמונה (imageBase64)" }, { status: 400 });
+      }
+      const visionResult = await analyzeTachographDiscVision(imageBase64, mimeType || "image/jpeg");
+      return Response.json(
+        { ok: true, data: visionResult },
+        { headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" } },
+      );
+    } catch (err) {
+      return Response.json(
+        { ok: false, error: "שגיאה בפענוח Vision: " + String(err) },
         { status: 500, headers: corsHeaders },
       );
     }
@@ -81,7 +105,7 @@ export async function handleBackendApiRequest(request: Request): Promise<Respons
 
   // 5. Image proxy (action=image)
   if (action === "image") {
-    const link = url.searchParams.get("link") || "";
+    const link = url.searchParams.get("link") || url.searchParams.get("url") || "";
     if (!link) {
       return Response.json({ ok: false, error: "חסר קישור לתמונה" }, { status: 400 });
     }
