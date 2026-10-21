@@ -24,6 +24,7 @@ import {
   Compass,
   Check,
   Info,
+  TrendingUp,
 } from "lucide-react";
 import { toast } from "sonner";
 import p13 from "@/assets/scans/p13.jpg.asset.json";
