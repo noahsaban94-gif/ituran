@@ -1,5 +1,9 @@
 import { fetchBootstrapData, invalidateCache, saveDiscCorrection } from "./sheets-api";
-import { analyzeDayWithGemini, analyzeTachographDiscVision } from "./gemini-analysis";
+import {
+  analyzeDayWithGemini,
+  analyzeTachographDiscVision,
+  askNoahChatAi,
+} from "./gemini-analysis";
 
 const corsHeaders: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
@@ -80,6 +84,30 @@ export async function handleBackendApiRequest(request: Request): Promise<Respons
     } catch (err) {
       return Response.json(
         { ok: false, error: "שגיאה בפענוח Vision: " + String(err) },
+        { status: 500, headers: corsHeaders },
+      );
+    }
+  }
+
+  // 3.2 Noah Chat AI Assistant
+  if (action === "noah-chat" || url.pathname.includes("/api/ai/noah-chat")) {
+    if (method !== "POST") {
+      return Response.json({ ok: false, error: "Method Not Allowed" }, { status: 405 });
+    }
+    try {
+      const body = await request.json();
+      const { message, history, contextSummary } = body;
+      if (!message) {
+        return Response.json({ ok: false, error: "חסרה הודעת משתמש" }, { status: 400 });
+      }
+      const chatResult = await askNoahChatAi(message, history || [], contextSummary);
+      return Response.json(
+        { ok: true, reply: chatResult.reply },
+        { headers: { ...corsHeaders, "Content-Type": "application/json; charset=utf-8" } },
+      );
+    } catch (err) {
+      return Response.json(
+        { ok: false, error: "שגיאה ב-Noah Chat AI: " + String(err) },
         { status: 500, headers: corsHeaders },
       );
     }

@@ -260,3 +260,56 @@ export async function analyzeDayWithGemini(input: AnalyzeDiscInput): Promise<Gem
     return fallback;
   }
 }
+
+/**
+ * צ'אט חי עם נועה AI באמצעות Gemini 2.5 Flash
+ */
+export async function askNoahChatAi(
+  message: string,
+  history: { sender: string; text: string }[] = [],
+  contextSummary?: string,
+): Promise<{ reply: string }> {
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    throw new Error("GEMINI_API_KEY not configured");
+  }
+
+  const ai = new GoogleGenAI({ apiKey });
+  const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
+  const systemInstruction = `
+את נועה AI (נועה) — סדרנית לוגיסטיקה אוטונומית ומערכת הבינה התפעולית של חברת "ח. סבן חומרי בניין (1994) בע״מ".
+הסדרן הראשי שמשוחח איתך הוא ראמי מסארווה (איש שטח וסדרן עבודה ראשי).
+מטרתך: לסייע לראמי בבקרת תעודות משלוח, ניתוח מסלולים, הצלבת זמני כתב יד מול שעון איתוראן ו-PTO מנוף, ואימות חריטות בדיסקיות טכוגרף עגולות של משאיות החברה:
+- חכמת גאבר (משאית מרצדס מנוף 615-41-002)
+- עלי אבו עידה (משאית איסוזו פלטה 651-51-701)
+
+עקרונות לתשובות שלך:
+1. שפה: עברית עסקית מקצועית, שירותית, חדה ואמינה עם חום של שותפה תפעולית לראמי.
+2. דייקנות: התבססי על נתוני הלוגיסטיקה והתעודות שסופקו בהקשר. צייני מספרים מדויקים (תעודות, ק"מ, זמני PTO ודקות).
+3. תמיד צייני אם יש חריגה (כגון שהייה ללא מנוף, פער בין איתוראן לכתב יד, או תעודה ללא חתימת לקוח).
+4. תשובות קריאות עם סעיפים, הדגשות כוכביות, ואייקונים תפעוליים רלוונטיים (🚚, 📍, ⏱️, ⚠️, ✅).
+${contextSummary ? `\nהקשר תפעולי בזמן אמת מגיליון סבן:\n${contextSummary}` : ""}
+`;
+
+  const contents = [
+    ...history.slice(-6).map((h) => ({
+      role: h.sender === "user" ? "user" : "model",
+      parts: [{ text: h.text }],
+    })),
+    {
+      role: "user",
+      parts: [{ text: message }],
+    },
+  ];
+
+  const response = await ai.models.generateContent({
+    model: modelName,
+    contents,
+    config: {
+      systemInstruction,
+    },
+  });
+
+  return { reply: response.text || "" };
+}
